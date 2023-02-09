@@ -1,0 +1,64 @@
+﻿  Functions.cpp
+..\source\Functions.cpp(39): fatal error C1083: Cannot open include file: 'unistd.h': No such file or directory
+  FunctionsCuda.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\FunctionsCuda.h(40): fatal error C1083: Cannot open include file: 'cuda_runtime_api.h': No such file or directory
+  FunGeo3d.cpp
+  JCellDivCpu.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimer.h(76): fatal error C1083: Cannot open include file: 'sys/time.h': No such file or directory
+  JCellDivCpuSingle.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimer.h(76): fatal error C1083: Cannot open include file: 'sys/time.h': No such file or directory
+  JCellDivGpu.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JObjectGpu.h(32): fatal error C1083: Cannot open include file: 'cuda_runtime_api.h': No such file or directory
+  JCellDivGpuSingle.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JObjectGpu.h(32): fatal error C1083: Cannot open include file: 'cuda_runtime_api.h': No such file or directory
+  JCfgRunBase.cpp
+  JDataArrays.cpp
+  JDebugSphGpu.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JDebugSphGpu.h(40): fatal error C1083: Cannot open include file: 'cuda_runtime_api.h': No such file or directory
+  JDsphConfig.cpp
+  JException.cpp
+  JOutputCsv.cpp
+  JPartNormalData.cpp
+  JSphCpu_NN_FDA.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimer.h(76): fatal error C1083: Cannot open include file: 'sys/time.h': No such file or directory
+  JSphCpu_NN_SPH.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimer.h(76): fatal error C1083: Cannot open include file: 'sys/time.h': No such file or directory
+  JSphCpu_Tensors.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimer.h(76): fatal error C1083: Cannot open include file: 'sys/time.h': No such file or directory
+  JSphGpu_NN.cpp
+  JCaseVtkOut.cpp
+  JSphBoundCorr.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimer.h(76): fatal error C1083: Cannot open include file: 'sys/time.h': No such file or directory
+  Generating Code...
+  Compiling...
+  JSphCpuSingle_InOut.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimer.h(76): fatal error C1083: Cannot open include file: 'sys/time.h': No such file or directory
+  JSphCpu_InOut.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimer.h(76): fatal error C1083: Cannot open include file: 'sys/time.h': No such file or directory
+  JDsFixedDt.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimer.h(76): fatal error C1083: Cannot open include file: 'sys/time.h': No such file or directory
+  JDsFtForcePoints.cpp
+  JSphGpuSingle.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimerCuda.h(32): fatal error C1083: Cannot open include file: 'cuda_runtime_api.h': No such file or directory
+  JSphGpuSingle_InOut.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimerCuda.h(32): fatal error C1083: Cannot open include file: 'cuda_runtime_api.h': No such file or directory
+  JDsInitialize.cpp
+  JSphInOut.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimer.h(76): fatal error C1083: Cannot open include file: 'sys/time.h': No such file or directory
+  JSphInOutGridData.cpp
+  JDsViscoInput.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimer.h(76): fatal error C1083: Cannot open include file: 'sys/time.h': No such file or directory
+  JDsPartsOut.cpp
+  JSphCpuSingle.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimer.h(76): fatal error C1083: Cannot open include file: 'sys/time.h': No such file or directory
+  JTimeControl.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimer.h(76): fatal error C1083: Cannot open include file: 'sys/time.h': No such file or directory
+  JSph.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimer.h(76): fatal error C1083: Cannot open include file: 'sys/time.h': No such file or directory
+  JSphCpu.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimer.h(76): fatal error C1083: Cannot open include file: 'sys/time.h': No such file or directory
+  JSphGpu.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimerCuda.h(32): fatal error C1083: Cannot open include file: 'cuda_runtime_api.h': No such file or directory
+  main.cpp
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JTimer.h(76): fatal error C1083: Cannot open include file: 'sys/time.h': No such file or directory
+  Generating Code...

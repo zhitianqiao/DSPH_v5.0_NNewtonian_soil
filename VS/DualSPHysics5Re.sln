@@ -1,0 +1,70 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DualSPHysics", "DualSPHysics5Re.vcxproj", "{55F71337-32A6-4C26-8CBA-A06A9183D6F2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		DebugCPU|Win32 = DebugCPU|Win32
+		DebugCPU|x64 = DebugCPU|x64
+		DebugCPU|x86 = DebugCPU|x86
+		DebugGPU|Win32 = DebugGPU|Win32
+		DebugGPU|x64 = DebugGPU|x64
+		DebugGPU|x86 = DebugGPU|x86
+		Release|Win32 = Release|Win32
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+		ReleaseCPU|Win32 = ReleaseCPU|Win32
+		ReleaseCPU|x64 = ReleaseCPU|x64
+		ReleaseCPU|x86 = ReleaseCPU|x86
+		ReleaseGPU|Win32 = ReleaseGPU|Win32
+		ReleaseGPU|x64 = ReleaseGPU|x64
+		ReleaseGPU|x86 = ReleaseGPU|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.Debug|Win32.ActiveCfg = Debug|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.Debug|Win32.Build.0 = Debug|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.Debug|x64.ActiveCfg = Debug|x64
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.Debug|x64.Build.0 = Debug|x64
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.Debug|x86.ActiveCfg = Debug|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.Debug|x86.Build.0 = Debug|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.DebugCPU|Win32.ActiveCfg = DebugCPU|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.DebugCPU|Win32.Build.0 = DebugCPU|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.DebugCPU|x64.ActiveCfg = DebugCPU|x64
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.DebugCPU|x64.Build.0 = DebugCPU|x64
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.DebugCPU|x86.ActiveCfg = DebugCPU|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.DebugCPU|x86.Build.0 = DebugCPU|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.DebugGPU|Win32.ActiveCfg = DebugGPU|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.DebugGPU|Win32.Build.0 = DebugGPU|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.DebugGPU|x64.ActiveCfg = DebugGPU|x64
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.DebugGPU|x64.Build.0 = DebugGPU|x64
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.DebugGPU|x86.ActiveCfg = DebugGPU|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.DebugGPU|x86.Build.0 = DebugGPU|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.Release|Win32.ActiveCfg = Release|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.Release|Win32.Build.0 = Release|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.Release|x64.ActiveCfg = Release|x64
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.Release|x64.Build.0 = Release|x64
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.Release|x86.ActiveCfg = Release|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.Release|x86.Build.0 = Release|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.ReleaseCPU|Win32.ActiveCfg = ReleaseCPU|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.ReleaseCPU|Win32.Build.0 = ReleaseCPU|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.ReleaseCPU|x64.ActiveCfg = ReleaseCPU|x64
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.ReleaseCPU|x64.Build.0 = ReleaseCPU|x64
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.ReleaseCPU|x86.ActiveCfg = ReleaseCPU|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.ReleaseCPU|x86.Build.0 = ReleaseCPU|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.ReleaseGPU|Win32.ActiveCfg = ReleaseGPU|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.ReleaseGPU|Win32.Build.0 = ReleaseGPU|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.ReleaseGPU|x64.ActiveCfg = ReleaseGPU|x64
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.ReleaseGPU|x64.Build.0 = ReleaseGPU|x64
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.ReleaseGPU|x86.ActiveCfg = ReleaseGPU|Win32
+		{55F71337-32A6-4C26-8CBA-A06A9183D6F2}.ReleaseGPU|x86.Build.0 = ReleaseGPU|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
