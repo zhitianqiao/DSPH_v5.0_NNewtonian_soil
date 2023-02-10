@@ -375,7 +375,7 @@ unsigned JSphCpu::GetParticlesData(unsigned n,unsigned pini,bool onlynormal
   if(pos) memcpy(pos ,Posc +pini,sizeof(tdouble3)*n);
   //<vs_non-Newtonian>
   if(aux_n)memcpy(aux_n,AuxNN+pini,sizeof(float)*n);
-  //if (sigma)memcpy(aux_n, Sigmac + pini, sizeof(tsymatrix3f)*n); //sigma stress: copy values from Sigmac.
+  //if (sigma)memcpy(sigma, Sigmac + pini, sizeof(tsymatrix3f)*n); //sigma stress: copy values from Sigmac.
   if(vel && rhop){
     for(unsigned p=0;p<n;p++){
       tfloat4 vr=Velrhopc[p+pini];

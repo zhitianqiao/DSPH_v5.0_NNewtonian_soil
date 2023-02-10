@@ -2470,13 +2470,13 @@ tfloat3* JSph::GetPointerDataFloat3(unsigned n,const tdouble3* v)const{
 /// Adds basic data arrays in object JDataArrays.
 //==============================================================================
 void JSph::AddBasicArrays(JDataArrays &arrays,unsigned np,const tdouble3 *pos
-  ,const unsigned *idp,const tfloat3 *vel,const float *rhop)const
+  ,const unsigned *idp,const tfloat3 *vel,const float *rhop, const float *aux_n)const
 {
   arrays.AddArray("Pos" ,np,pos);
   arrays.AddArray("Idp" ,np,idp);
   arrays.AddArray("Vel" ,np,vel);
   arrays.AddArray("Rhop",np,rhop);
-  //arrays.AddArray("Aux_n", np,aux_n);
+  arrays.AddArray("Aux_n", np,aux_n);
 }
 
 //==============================================================================
@@ -2534,26 +2534,38 @@ void JSph::SavePartData(unsigned npok,unsigned nout,const JDataArrays& arrays
       if(!(err=arrays.CheckErrorArray("Idp" ,TypeUint   ,npok)).empty())Run_Exceptioon(err);
       if(!(err=arrays.CheckErrorArray("Vel" ,TypeFloat3 ,npok)).empty())Run_Exceptioon(err);
       if(!(err=arrays.CheckErrorArray("Rhop",TypeFloat  ,npok)).empty())Run_Exceptioon(err);
+	  if (!(err = arrays.CheckErrorArray("Aux_n", TypeFloat, npok)).empty())Run_Exceptioon(err);
       const tdouble3 *pos =arrays.GetArrayDouble3("Pos");
       const unsigned *idp =arrays.GetArrayUint   ("Idp");
       const tfloat3  *vel =arrays.GetArrayFloat3 ("Vel");
       const float    *rhop=arrays.GetArrayFloat  ("Rhop");
+	  const float    *aux_n = arrays.GetArrayFloat("Aux_n");
       if(SvPosDouble){
-        DataBi4->AddPartData(npok,idp,pos,vel,rhop);
+        DataBi4->AddPartData(npok,idp,pos,vel,rhop,aux_n);
       }
       else{
         posf3=GetPointerDataFloat3(npok,pos);
-        DataBi4->AddPartData(npok,idp,posf3,vel,rhop);
+        DataBi4->AddPartData(npok,idp,posf3,vel,rhop,aux_n);
       }
+	  //creates a new array for pressure values.
+	  float *press1 = new float[npok];
+	  //computes the pressure of each particles using its density.
+	  for (unsigned p = 0; p < npok; p++) {
+		  press1[p] = (idp[p] <= CaseNbound ? CteB*(pow(rhop[p] / RhopZero, Gamma) - 1.0f) : 0.f);
+	  }
+	  //adds the new array named "Pressure" with the pressure values.
+	  DataBi4->AddPartData("Pressure",npok,press1);
       //-Adds other arrays.
-      const string arrignore=":Pos:Idp:Vel:Rhop:";
+      //const string arrignore=":Pos:Idp:Vel:Rhop:";
+	  const string arrignore = ":Pos:Idp:Vel:Rhop:Aux_n:";
       for(unsigned ca=0;ca<arrays.Count();ca++){
         const JDataArrays::StDataArray arr=arrays.GetArrayData(ca);
         if(int(arrignore.find(string(":")+arr.keyname+":"))<0){//-Ignore main arrays.
           DataBi4->AddPartData(arr.keyname,npok,arr.ptr,arr.type);
         }
       }
-      DataBi4->SaveFilePart();
+      DataBi4->SaveFilePart(); //Generates bi4 file.
+	  delete[] press1; press1 = NULL;
     }
     if(SvData&SDAT_Info)DataBi4->SaveFileInfo();
     delete[] posf3;

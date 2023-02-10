@@ -471,7 +471,7 @@ protected:
 
   tfloat3* GetPointerDataFloat3(unsigned n,const tdouble3* v)const;
   void AddBasicArrays(JDataArrays &arrays,unsigned np,const tdouble3 *pos
-    ,const unsigned *idp,const tfloat3 *vel,const float *rhop)const;
+    ,const unsigned *idp,const tfloat3 *vel,const float *rhop,const float *aux_n)const;
   void SavePartData(unsigned npok,unsigned nout,const JDataArrays& arrays,unsigned ndom,const tdouble3 *vdom,const StInfoPartPlus *infoplus);
   void SaveData(unsigned npok,const JDataArrays& arrays,unsigned ndom,const tdouble3 *vdom,const StInfoPartPlus *infoplus);
   void CheckTermination();

@@ -1213,7 +1213,7 @@ void JSphCpuSingle::SaveData(){
   const tdouble3 vdom[2]={CellDivSingle->GetDomainLimits(true),CellDivSingle->GetDomainLimits(false)};
   //-Stores particle data. | Graba datos de particulas.
   JDataArrays arrays;
-  AddBasicArrays(arrays,npsave,pos,idp,vel,rhop);
+  AddBasicArrays(arrays,npsave,pos,idp,vel,rhop,aux_n);
   JSph::SaveData(npsave,arrays,1,vdom,&infoplus);
   //-Free auxiliary memory for particle data. | Libera memoria auxiliar para datos de particulas.
   ArraysCpu->Free(idp);

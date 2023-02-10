@@ -152,9 +152,9 @@ template<TpFtMode ftmode,TpVisco tvisco> void JSphCpu::InteractionForcesFluid_NN
     GetStressTensor_sym(D_tensorp1,visco_etap1,I_t,II_t,J1_t,J2_t,tau_tensor_magn,tau_tensorp1);
 
     //debug uncomment if you want an output of effective viscosity
-    //if(tau_tensor_magn){
-    //  auxnn[p1] = visco_etap1; // D_tensor_magn;
-    //}
+    if(tau_tensor_magn){
+      auxnn[p1] = visco_etap1; // D_tensor_magn;
+    }
 
     ////-Sum results together. | Almacena resultados.
     if(tvisco!=VISCO_Artificial) {
@@ -215,9 +215,9 @@ template<TpFtMode ftmode,TpVisco tvisco> void JSphCpu::InteractionForcesFluid_NN
       D_tensor[p1].zz=D_tensorp1.zz;
     }
     //debug
-    //if(D_tensor_magn){
-    //  auxnn[p1] = visco_etap1; // d_tensor_magn;
-    //} 
+    if(D_tensor_magn){
+      auxnn[p1] = visco_etap1; // d_tensor_magn;
+    } 
     const int th=omp_get_thread_num();
     if(visco_etap1>viscetath[th*OMP_STRIDE])viscetath[th*OMP_STRIDE]=visco_etap1;
   }

@@ -352,7 +352,7 @@ void JPartDataBi4::AddPartData(const std::string &name,unsigned npok,const void 
 /// Adds data of particles to new part.
 //==============================================================================
 void JPartDataBi4::AddPartData(unsigned npok,const unsigned *idp,const ullong *idpd
-  ,const tfloat3 *pos,const tdouble3 *posd,const tfloat3 *vel,const float *rhop
+  ,const tfloat3 *pos,const tdouble3 *posd,const tfloat3 *vel,const float *rhop,const float *aux_n
   ,bool externalpointer)
 {
   if(!idp&&!idpd)Run_Exceptioon("The id of particles is invalid.");
@@ -366,6 +366,7 @@ void JPartDataBi4::AddPartData(unsigned npok,const unsigned *idp,const ullong *i
   else    Part->CreateArray("Pos" ,JBinaryDataDef::DatFloat3,npok,pos,externalpointer);
   Part->CreateArray("Vel",JBinaryDataDef::DatFloat3,npok,vel,externalpointer);
   Part->CreateArray("Rhop",JBinaryDataDef::DatFloat,npok,rhop,externalpointer);
+  Part->CreateArray("Aux_n", JBinaryDataDef::DatFloat, npok, aux_n, externalpointer);
 }
 
 //==============================================================================
