@@ -90,15 +90,24 @@ void JSphCpu::InitVars(){
   VelrhopM1c=NULL;                //-Verlet
   PosPrec=NULL; VelrhopPrec=NULL; //-Symplectic
   SpsTauc=NULL; SpsGradvelc=NULL; //-Laminar+SPS. 
+  Rstressc = NULL;       //-artificial stress tensor
+  Pstressc = NULL;       //artificial pressure
   //<vs_non-Newtonian>
   Visco_etac=NULL;              //effective viscosity
   D_tensorc=NULL;               //-Deformation tensor. 
   AuxNN=NULL;                   //<vs_non-Newtonian>
+  Epsilon1 = NULL; //xinjia
+  Epsilon2 = NULL; //
+  Cigma1 = NULL; //
+  Cigma2 = NULL; //
   
   Delta_Sigmac = NULL;
 
   Sigmac=NULL;  //stress
   SigmaM1c = NULL; //-Verlet
+  SigmaPrec = NULL; //-Symplectic
+  SigmaSc = NULL;
+  SigmaSM1c = NULL; 
 
   Arc=NULL; Acec=NULL; Deltac=NULL;
   ShiftPosfsc=NULL;               //-Shifting.
@@ -177,23 +186,30 @@ void JSphCpu::AllocCpuMemoryParticles(unsigned np,float over){
   ArraysCpu->AddArrayCount(JArraysCpu::SIZE_16B,2); //-velrhop,poscell
   ArraysCpu->AddArrayCount(JArraysCpu::SIZE_24B,2); //-pos
   ArraysCpu->AddArrayCount(JArraysCpu::SIZE_24B,1); //-sigma
+  ArraysCpu->AddArrayCount(JArraysCpu::SIZE_24B, 1); //-sigmaS
   if(TStep==STEP_Verlet){
     ArraysCpu->AddArrayCount(JArraysCpu::SIZE_16B,1); //-velrhopm1
 	ArraysCpu->AddArrayCount(JArraysCpu::SIZE_24B,1); //-sigmam1
+	ArraysCpu->AddArrayCount(JArraysCpu::SIZE_24B, 1); //-sigmaSm1
   }
   else if(TStep==STEP_Symplectic){
     ArraysCpu->AddArrayCount(JArraysCpu::SIZE_24B,1); //-pospre
     ArraysCpu->AddArrayCount(JArraysCpu::SIZE_16B,1); //-velrhoppre
+	ArraysCpu->AddArrayCount(JArraysCpu::SIZE_24B, 1); //-sigmapre
   }
   //<vs_non-Newtonian>
   if(TVisco!=VISCO_Artificial){ //<vs_non-Newtonian>   
     ArraysCpu->AddArrayCount(JArraysCpu::SIZE_24B,2); //-SpsTau,SpsGradvel
 	ArraysCpu->AddArrayCount(JArraysCpu::SIZE_24B,1); //-delta_sigma
+	ArraysCpu->AddArrayCount(JArraysCpu::SIZE_24B, 1); //Rstress
+	ArraysCpu->AddArrayCount(JArraysCpu::SIZE_4B, 1);  //Pstress
   }
   if(MultiPhase) { //<vs_non-Newtonian>   
     ArraysCpu->AddArrayCount(JArraysCpu::SIZE_24B,1); //d_tensor
     ArraysCpu->AddArrayCount(JArraysCpu::SIZE_4B,1); //-Visco_etac
-    ArraysCpu->AddArrayCount(JArraysCpu::SIZE_4B,2); //-AuxNN
+    ArraysCpu->AddArrayCount(JArraysCpu::SIZE_4B,2); //-AuxNN auxnn
+	ArraysCpu->AddArrayCount(JArraysCpu::SIZE_12B, 4); //-Epsilon1 epsilon1 Cigma1 cigma1
+	ArraysCpu->AddArrayCount(JArraysCpu::SIZE_12B, 4); //Epsilon2 epsilon2 Cigma2 cigma2
   }
   if(Shifting){
     ArraysCpu->AddArrayCount(JArraysCpu::SIZE_16B,1); //-shiftposfs
@@ -225,12 +241,19 @@ void JSphCpu::ResizeCpuMemoryParticles(unsigned npnew){
   tfloat4     *velrhopm1  =SaveArrayCpu(Np,VelrhopM1c);
   tsymatrix3f *sigma    = SaveArrayCpu(Np, Sigmac);
   tsymatrix3f *sigmam1  = SaveArrayCpu(Np, SigmaM1c);
+  tsymatrix3f *sigmaS = SaveArrayCpu(Np, SigmaSc);
+  tsymatrix3f *sigmaSm1 = SaveArrayCpu(Np, SigmaSM1c);
   tdouble3    *pospre     =SaveArrayCpu(Np,PosPrec);
   tfloat4     *velrhoppre =SaveArrayCpu(Np,VelrhopPrec);
+  tsymatrix3f *sigmapre = SaveArrayCpu(Np, SigmaPrec);
   //tsymatrix3f *spstau     =SaveArrayCpu(Np,SpsTauc);
   tfloat3     *boundnormal=SaveArrayCpu(Np,BoundNormalc);
   tfloat3     *motionvel  =SaveArrayCpu(Np,MotionVelc);
   float       *auxnn      = SaveArrayCpu(Np, AuxNN); //<vs_non-Newtonian>
+  tfloat3     *epsilon1     = SaveArrayCpu(Np, Epsilon1); //xinjia
+  tfloat3     *epsilon2 = SaveArrayCpu(Np, Epsilon2);
+  tfloat3     *cigma1 = SaveArrayCpu(Np, Cigma1);
+  tfloat3     *cigma2 = SaveArrayCpu(Np, Cigma2);
   //-Frees pointers.
   ArraysCpu->Free(Idpc);
   ArraysCpu->Free(Codec);
@@ -240,10 +263,17 @@ void JSphCpu::ResizeCpuMemoryParticles(unsigned npnew){
   ArraysCpu->Free(VelrhopM1c);
   ArraysCpu->Free(Sigmac);
   ArraysCpu->Free(SigmaM1c);
+  ArraysCpu->Free(SigmaSc);
+  ArraysCpu->Free(SigmaSM1c);
   ArraysCpu->Free(PosPrec);
-  ArraysCpu->Free(VelrhopPrec);
+  ArraysCpu->Free(VelrhopPrec); 
+  ArraysCpu->Free(SigmaPrec);
   //ArraysCpu->Free(SpsTauc);
   ArraysCpu->Free(AuxNN); //<vs_non-Newtonian>
+  ArraysCpu->Free(Epsilon1); //xinjia
+  ArraysCpu->Free(Epsilon2);
+  ArraysCpu->Free(Cigma1);
+  ArraysCpu->Free(Cigma2);
   ArraysCpu->Free(BoundNormalc);
   ArraysCpu->Free(MotionVelc);
   //-Resizes CPU memory allocation.
@@ -257,12 +287,19 @@ void JSphCpu::ResizeCpuMemoryParticles(unsigned npnew){
   Posc    =ArraysCpu->ReserveDouble3();
   Velrhopc=ArraysCpu->ReserveFloat4();
   Sigmac = ArraysCpu->ReserveSymatrix3f();
+  SigmaSc = ArraysCpu->ReserveSymatrix3f();
   if (velrhopm1)  VelrhopM1c = ArraysCpu->ReserveFloat4(); 
   if (sigmam1)  SigmaM1c = ArraysCpu->ReserveSymatrix3f();
+  if (sigmaSm1)  SigmaSM1c = ArraysCpu->ReserveSymatrix3f();
   if(pospre)     PosPrec     =ArraysCpu->ReserveDouble3();
   if(velrhoppre) VelrhopPrec =ArraysCpu->ReserveFloat4();
+  if (sigmapre)  SigmaPrec = ArraysCpu->ReserveSymatrix3f();
   //if(spstau)     SpsTauc     =ArraysCpu->ReserveSymatrix3f();
   if(auxnn)     AuxNN         =ArraysCpu->ReserveFloat(); //<vs_non-Newtonian>
+  if(epsilon1)    Epsilon1 = ArraysCpu->ReserveFloat3(); //xinjia
+  if(epsilon2)    Epsilon2 = ArraysCpu->ReserveFloat3();
+  if(cigma1)    Cigma1 = ArraysCpu->ReserveFloat3(); 
+  if(cigma2)    Cigma2 = ArraysCpu->ReserveFloat3();
   if(boundnormal)BoundNormalc=ArraysCpu->ReserveFloat3();
   if(motionvel)  MotionVelc  =ArraysCpu->ReserveFloat3();
   //-Restore data in CPU memory.
@@ -274,10 +311,17 @@ void JSphCpu::ResizeCpuMemoryParticles(unsigned npnew){
   RestoreArrayCpu(Np,velrhopm1,VelrhopM1c);
   RestoreArrayCpu(Np, sigma, Sigmac);
   RestoreArrayCpu(Np, sigmam1, SigmaM1c);
+  RestoreArrayCpu(Np, sigmaS, SigmaSc);
+  RestoreArrayCpu(Np, sigmaSm1, SigmaSM1c);
   RestoreArrayCpu(Np,pospre,PosPrec);
   RestoreArrayCpu(Np,velrhoppre,VelrhopPrec);
+  RestoreArrayCpu(Np, sigmapre, SigmaPrec);
   //RestoreArrayCpu(Np,spstau,SpsTauc);
   RestoreArrayCpu(Np,auxnn,AuxNN); //<vs_non-Newtonian>
+  RestoreArrayCpu(Np, epsilon1, Epsilon1); //xinjia
+  RestoreArrayCpu(Np, epsilon2, Epsilon2);
+  RestoreArrayCpu(Np, cigma1, Cigma1);
+  RestoreArrayCpu(Np, cigma2, Cigma2);
   RestoreArrayCpu(Np,boundnormal,BoundNormalc);
   RestoreArrayCpu(Np,motionvel,MotionVelc);
   //-Updates values.
@@ -321,11 +365,19 @@ void JSphCpu::ReserveBasicArraysCpu(){
   Posc=ArraysCpu->ReserveDouble3();
   Velrhopc=ArraysCpu->ReserveFloat4();
   Sigmac = ArraysCpu->ReserveSymatrix3f();
+  SigmaSc = ArraysCpu->ReserveSymatrix3f();
   if (TStep == STEP_Verlet) { 
 	  VelrhopM1c = ArraysCpu->ReserveFloat4(); 
 	  SigmaM1c = ArraysCpu->ReserveSymatrix3f();
+	  SigmaSM1c = ArraysCpu->ReserveSymatrix3f();
   }
-  if(MultiPhase)AuxNN=ArraysCpu->ReserveFloat(); //<vs_non-Newtonian>
+  if (MultiPhase) {
+	  AuxNN = ArraysCpu->ReserveFloat(); //<vs_non-Newtonian>
+	  Epsilon1 = ArraysCpu->ReserveFloat3(); //xinjia
+	  Epsilon2 = ArraysCpu->ReserveFloat3();
+	  Cigma1 = ArraysCpu->ReserveFloat3();
+	  Cigma2 = ArraysCpu->ReserveFloat3();
+  }
   if(!MultiPhase && TVisco==VISCO_LaminarSPS)SpsTauc=ArraysCpu->ReserveSymatrix3f(); //<vs_non-Newtonian>
   if(UseNormals){
     BoundNormalc=ArraysCpu->ReserveFloat3();
@@ -366,7 +418,7 @@ void JSphCpu::PrintAllocMemory(llong mcpu)const{
 /// - onlynormal: Solo se queda con las normales, elimina las particulas periodicas.
 //==============================================================================
 unsigned JSphCpu::GetParticlesData(unsigned n,unsigned pini,bool onlynormal
-  ,unsigned *idp,tdouble3 *pos,tfloat3 *vel,float *rhop,typecode *code, float *aux_n)
+  ,unsigned *idp,tdouble3 *pos,tfloat3 *vel,float *rhop,typecode *code, float *aux_n, tfloat3 *eps1, tfloat3 *eps2, tfloat3 *cig1, tfloat3 *cig2)
 {
   unsigned num=n;
   //-Copy selected values.
@@ -375,6 +427,10 @@ unsigned JSphCpu::GetParticlesData(unsigned n,unsigned pini,bool onlynormal
   if(pos) memcpy(pos ,Posc +pini,sizeof(tdouble3)*n);
   //<vs_non-Newtonian>
   if(aux_n)memcpy(aux_n,AuxNN+pini,sizeof(float)*n);
+  if (eps1)memcpy(eps1, Epsilon1 + pini, sizeof(tfloat3)*n); //xinjia
+  if (eps2)memcpy(eps2, Epsilon2 + pini, sizeof(tfloat3)*n);
+  if (cig1)memcpy(cig1, Cigma1 + pini, sizeof(tfloat3)*n); 
+  if (cig2)memcpy(cig2, Cigma2 + pini, sizeof(tfloat3)*n);
   //if (sigma)memcpy(sigma, Sigmac + pini, sizeof(tsymatrix3f)*n); //sigma stress: copy values from Sigmac.
   if(vel && rhop){
     for(unsigned p=0;p<n;p++){
@@ -407,6 +463,10 @@ unsigned JSphCpu::GetParticlesData(unsigned n,unsigned pini,bool onlynormal
         code2[pdel]=code2[p];
         //<vs_non-Newtonian>
         if(aux_n)aux_n[pdel]=aux_n[p];
+		if (eps1)eps1[pdel] = eps1[p]; //xinjia
+		if (eps2)eps2[pdel] = eps2[p];
+		if (cig1)cig1[pdel] = cig1[p];
+		if (cig2)cig2[pdel] = cig2[p];
 		//if(sigma)sigma[pdel] = sigma[p];
       }
       if(!normal)ndel++;
@@ -528,6 +588,7 @@ void JSphCpu::InitRunCpu(){
   if (TStep == STEP_Verlet) {
 	  memcpy(VelrhopM1c, Velrhopc, sizeof(tfloat4)*Np);
 	  memcpy(SigmaM1c, Sigmac, sizeof(tsymatrix3f)*Np);
+	  memcpy(SigmaSM1c, SigmaSc, sizeof(tsymatrix3f)*Np);
   }
   if(!MultiPhase && TVisco==VISCO_LaminarSPS)memset(SpsTauc,0,sizeof(tsymatrix3f)*Np); //<vs_non-Newtonian>
   if(CaseNfloat)InitFloating();
@@ -549,8 +610,11 @@ void JSphCpu::PreInteractionVars_Forces(unsigned np,unsigned npb){
   if(SpsGradvelc)memset(SpsGradvelc,0,sizeof(tsymatrix3f)*np);  //SpsGradvelc[]=(0,0,0,0,0,0).
   if(SpsTauc)    memset(SpsTauc,0,sizeof(tsymatrix3f)*np);
   if(Delta_Sigmac)     memset(Delta_Sigmac, 0, sizeof(tsymatrix3f)*np);    //Delta_Sigmac[]=(0,0,0,0,0,0).
+  if (Rstressc)    memset(Rstressc, 0, sizeof(tsymatrix3f)*np);
+  if (Pstressc)    memset(Pstressc, 0, sizeof(float)*np);
   if(D_tensorc)  memset(D_tensorc,0,sizeof(tsymatrix3f)*np);
   if(Visco_etac) memset(Visco_etac,0,sizeof(float)*np);  
+  //if (Strain) memset(Strain, 0, sizeof(tfloat3)*np); //xinjia
 
   //-Select particles for shifting.
   if(ShiftPosfsc)Shifting->InitCpu(npf,npb,Posc,ShiftPosfsc);
@@ -590,6 +654,9 @@ void JSphCpu::PreInteraction_Forces(){
     Visco_etac=ArraysCpu->ReserveFloat();
     SpsTauc=ArraysCpu->ReserveSymatrix3f();
 	Delta_Sigmac = ArraysCpu->ReserveSymatrix3f();
+	Rstressc= ArraysCpu->ReserveSymatrix3f();
+	Pstressc = ArraysCpu->ReserveFloat();
+	//Strain = ArraysCpu->ReserveFloat3(); //xinjia
   }
 
   //-Initialise arrays.
@@ -669,7 +736,12 @@ void JSphCpu::PosInteraction_Forces(){
   ArraysCpu->Free(Delta_Sigmac); Delta_Sigmac = NULL;
   ArraysCpu->Free(D_tensorc);    D_tensorc=NULL;
   ArraysCpu->Free(Visco_etac);   Visco_etac=NULL;
-  if (MultiPhase) { ArraysCpu->Free(SpsTauc); SpsTauc = NULL; }
+  if (MultiPhase) {
+	  ArraysCpu->Free(SpsTauc); SpsTauc = NULL; 
+	  ArraysCpu->Free(Delta_Sigmac); Delta_Sigmac = NULL;
+	  ArraysCpu->Free(Rstressc); Rstressc = NULL;
+	  ArraysCpu->Free(Pstressc); Pstressc = NULL;
+  }
 }
 
 //==============================================================================
@@ -1122,15 +1194,23 @@ template<TpKernel tker,TpFtMode ftmode,TpVisco tvisco,TpDensity tdensity> void J
     if(Shifting){ const bool shift=true;
            if(TVelGrad==VELGRAD_FDA)Interaction_ForcesCpuT_NN_FDA<tker,ftmode,tvisco,tdensity,shift>(t,res);
 		   else if (TVelGrad == VELGRAD_SPH) {
-			   if (!Soil) Interaction_ForcesCpuT_NN_SPH<tker,ftmode,tvisco,tdensity,shift>(t,res);
-			   else       Interaction_ForcesCpuT_NN_EPmodel<tker, ftmode, tvisco, tdensity, shift>(t, res);
+			   if (TConstitutive == Constitutive_Elastic) Interaction_ForcesCpuT_NN_Elastic<tker,ftmode,tvisco,tdensity,shift>(t,res);
+			   else if (TConstitutive == Constitutive_EPmodel) {
+				   if (TAcceleration == ADT_None)  Interaction_ForcesCpuT_NN_EPmodel<tker, ftmode, tvisco, tdensity, ADT_None, shift>(t, res);
+				   else if (TAcceleration == ADT_Artificial) Interaction_ForcesCpuT_NN_EPmodel<tker, ftmode, tvisco, tdensity, ADT_Artificial, shift>(t, res);
+			   }
+			   else       Interaction_ForcesCpuT_NN_SPH<tker, ftmode, tvisco, tdensity, shift>(t, res);
 		   }
 		  
     }else{        const bool shift=false;
            if(TVelGrad==VELGRAD_FDA)Interaction_ForcesCpuT_NN_FDA<tker,ftmode,tvisco,tdensity,shift>(t,res);
       else if(TVelGrad==VELGRAD_SPH) {
-		  if (!Soil) Interaction_ForcesCpuT_NN_SPH<tker, ftmode, tvisco, tdensity, shift>(t, res);
-		  else       Interaction_ForcesCpuT_NN_EPmodel<tker, ftmode, tvisco, tdensity, shift>(t, res);
+		  if (TConstitutive == Constitutive_Elastic) Interaction_ForcesCpuT_NN_Elastic<tker, ftmode, tvisco, tdensity, shift>(t, res);
+		  else if (TConstitutive == Constitutive_EPmodel) {
+			  if (TAcceleration == ADT_None) Interaction_ForcesCpuT_NN_EPmodel<tker, ftmode, tvisco, tdensity, ADT_None, shift>(t, res);
+			  else if (TAcceleration == ADT_Artificial) Interaction_ForcesCpuT_NN_EPmodel<tker, ftmode, tvisco, tdensity, ADT_Artificial, shift>(t, res);
+		  }//Interaction_ForcesCpuT_NN_EPmodel<tker, ftmode, tvisco, tdensity, shift>(t, res);
+		  else       Interaction_ForcesCpuT_NN_SPH<tker, ftmode, tvisco, tdensity, shift>(t, res);
 	  }
     }
   }
@@ -1455,8 +1535,6 @@ void JSphCpu::ComputeVerletVarsFluid(bool shift,const tfloat3 *indirvel
   //  #pragma omp parallel for schedule (static) if(npf>OMP_LIMIT_COMPUTESTEP)
   //#endif
   for(int p=pini;p<pfin;p++){
-	 //const float rhop1 = double(velrhop1[p].w);
-	 //const float rhop2 = double(velrhop2[p].w);
     //-Calculate density. | Calcula densidad.
     const float rhopnew=float(double(velrhop2[p].w)+dt2*(Arc[p]));
     if(!WithFloating || CODE_IsFluid(code[p])){//-Fluid Particles.
@@ -1478,14 +1556,14 @@ void JSphCpu::ComputeVerletVarsFluid(bool shift,const tfloat3 *indirvel
         float(double(velrhop2[p].z) + acegr.z*dt2),
         rhopnew);
 	  //-Calculate sigma. 
-	  const tsymatrix3d delta_sigma=ToTsymatrix3D(Delta_Sigmac[p]); //convert float to double
+	  const tsymatrix3d delta_sigma=ToTsymatrix3D(SpsTauc[p]); //convert float to double
 	  tsymatrix3f rsigmanew =TSymMatrix3f(//imitate varible rvelrhopnew
-		  float(sigma2[p].xx + float(delta_sigma.xx*dt2)),
-		  float(sigma2[p].xy + float(delta_sigma.xx*dt2)),
-		  float(sigma2[p].xz + float(delta_sigma.xz*dt2)),
-		  float(sigma2[p].yy + float(delta_sigma.yy*dt2)),
-		  float(sigma2[p].yz + float(delta_sigma.yz*dt2)),
-		  float(sigma2[p].zz + float(delta_sigma.zz*dt2))
+		  float(double(sigma2[p].xx) + delta_sigma.xx*dt2),
+		  float(double(sigma2[p].xy) + delta_sigma.xy*dt2),
+		  float(double(sigma2[p].xz) + delta_sigma.xz*dt2),
+		  float(double(sigma2[p].yy) + delta_sigma.yy*dt2),
+		  float(double(sigma2[p].yz) + delta_sigma.yz*dt2),
+		  float(double(sigma2[p].zz) + delta_sigma.zz*dt2)
 		  );
       //-Restore data of inout particles.
       if(InOut && CODE_IsFluidInout(Codec[p])){
@@ -1507,12 +1585,7 @@ void JSphCpu::ComputeVerletVarsFluid(bool shift,const tfloat3 *indirvel
       //-Update particle data.
       UpdatePos(pos[p],dx,dy,dz,outrhop,p,pos,dcell,code);
       velrhopnew[p]=rvelrhopnew;
-	  sigmanew[p].xx = rsigmanew.xx;
-	  sigmanew[p].xy = rsigmanew.xy;
-	  sigmanew[p].xz = rsigmanew.xz;
-	  sigmanew[p].yy = rsigmanew.yy;
-	  sigmanew[p].yz = rsigmanew.yz;
-	  sigmanew[p].zz = rsigmanew.zz;
+	  sigmanew[p] = rsigmanew;
     }
     else{//-Floating Particles.
       velrhopnew[p]=velrhop1[p];
@@ -1574,9 +1647,11 @@ void JSphCpu::ComputeSymplecticPre(double dt){
   //-Assign memory to variables Pre. | Asigna memoria a variables Pre.
   PosPrec=ArraysCpu->ReserveDouble3();
   VelrhopPrec=ArraysCpu->ReserveFloat4();
+  SigmaPrec=ArraysCpu->ReserveSymatrix3f();
   //-Change data to variables Pre to calculate new data. | Cambia datos a variables Pre para calcular nuevos datos.
   swap(PosPrec,Posc);         //Put value of Pos[] in PosPre[].         | Es decir... PosPre[] <= Pos[].
   swap(VelrhopPrec,Velrhopc); //Put value of Velrhop[] in VelrhopPre[]. | Es decir... VelrhopPre[] <= Velrhop[].
+  swap(SigmaPrec, Sigmac);
   //-Calculate new values of particles. | Calcula nuevos datos de particulas.
   const double dt05=dt*.5;
   
@@ -1617,6 +1692,16 @@ void JSphCpu::ComputeSymplecticPre(double dt){
         float(double(VelrhopPrec[p].y) + (double(Acec[p].y)+Gravity.y) * dt05),
         float(double(VelrhopPrec[p].z) + (double(Acec[p].z)+Gravity.z) * dt05),
         rhopnew);
+	  //-Calculate sigma. 
+	  const tsymatrix3d delta_sigma = ToTsymatrix3D(SpsTauc[p]); //convert float to double
+	  tsymatrix3f rsigmanew = TSymMatrix3f(//imitate varible rvelrhopnew
+		  float(double(SigmaPrec[p].xx) + delta_sigma.xx*dt05),
+		  float(double(SigmaPrec[p].xy) + delta_sigma.xx*dt05),
+		  float(double(SigmaPrec[p].xz) + delta_sigma.xz*dt05),
+		  float(double(SigmaPrec[p].yy) + delta_sigma.yy*dt05),
+		  float(double(SigmaPrec[p].yz) + delta_sigma.yz*dt05),
+		  float(double(SigmaPrec[p].zz) + delta_sigma.zz*dt05)
+	  );
       //-Restore data of inout particles.
       if(InOut && CODE_IsFluidInout(Codec[p])){
         outrhop=false;
@@ -1632,6 +1717,7 @@ void JSphCpu::ComputeSymplecticPre(double dt){
       //-Update particle data.
       UpdatePos(PosPrec[p],dx,dy,dz,outrhop,p,Posc,Dcellc,Codec);
       Velrhopc[p]=rvelrhopnew;
+	  Sigmac[p] = rsigmanew;
     }
     else{//-Floating Particles.
       Velrhopc[p]=VelrhopPrec[p];
@@ -1683,6 +1769,16 @@ void JSphCpu::ComputeSymplecticCorr(double dt){
         float(double(VelrhopPrec[p].y) + (double(Acec[p].y)+Gravity.y) * dt), 
         float(double(VelrhopPrec[p].z) + (double(Acec[p].z)+Gravity.z) * dt),
         rhopnew);
+	  //-Calculate sigma. 
+	  const tsymatrix3d delta_sigma = ToTsymatrix3D(SpsTauc[p]); //convert float to double
+	  tsymatrix3f rsigmanew = TSymMatrix3f(//imitate varible rvelrhopnew
+		  float(double(SigmaPrec[p].xx) + delta_sigma.xx*dt),
+		  float(double(SigmaPrec[p].xy) + delta_sigma.xx*dt),
+		  float(double(SigmaPrec[p].xz) + delta_sigma.xz*dt),
+		  float(double(SigmaPrec[p].yy) + delta_sigma.yy*dt),
+		  float(double(SigmaPrec[p].yz) + delta_sigma.yz*dt),
+		  float(double(SigmaPrec[p].zz) + delta_sigma.zz*dt)
+	  );
       //-Calculate displacement. | Calcula desplazamiento.
       double dx=(double(VelrhopPrec[p].x)+double(rvelrhopnew.x)) * dt05; 
       double dy=(double(VelrhopPrec[p].y)+double(rvelrhopnew.y)) * dt05; 
@@ -1713,6 +1809,7 @@ void JSphCpu::ComputeSymplecticCorr(double dt){
       //-Update particle data.
       UpdatePos(PosPrec[p],dx,dy,dz,outrhop,p,Posc,Dcellc,Codec);
       Velrhopc[p]=rvelrhopnew;
+	  Sigmac[p] = rsigmanew;
     }
     else{//-Floating Particles.
       Velrhopc[p]=VelrhopPrec[p];
@@ -1725,6 +1822,7 @@ void JSphCpu::ComputeSymplecticCorr(double dt){
   //-Free memory assigned to variables Pre and ComputeSymplecticPre(). | Libera memoria asignada a variables Pre en ComputeSymplecticPre().
   ArraysCpu->Free(PosPrec);      PosPrec=NULL;
   ArraysCpu->Free(VelrhopPrec);  VelrhopPrec=NULL;
+  ArraysCpu->Free(SigmaPrec);    SigmaPrec = NULL;
   TmcStop(Timers,TMC_SuComputeStep);
 }
 

@@ -288,8 +288,8 @@ template<TpKernel tker,TpFtMode ftmode,TpVisco tvisco,TpDensity tdensity,bool sh
                 GetStrainRateTensor(dvelp1,div_vel,I_D,II_D,J1_D,J2_D,div_D_tensor,D_tensor_magn,D_tensor);
 
                 //Effective viscosity                                   
-                float m_NN=PhaseCte[pp2].m_NN; float n_NN=PhaseCte[pp2].n_NN; float tau_yield=PhaseCte[pp2].tau_yield; float MC_phi = PhaseCte[pp2].MC_phi; float Cohes = PhaseCte[pp2].Cohes;
-                GetEta_Effective(p1, pp1,tau_yield, MC_phi, Cohes, pressp1, D_tensor_magn,visco_NN,m_NN,n_NN,visco_etap1);
+                float m_NN=PhaseCte[pp2].m_NN; float n_NN=PhaseCte[pp2].n_NN; float tau_yield=PhaseCte[pp2].tau_yield; float DP_phi = PhaseCte[pp2].DP_phi; float DP_cohes = PhaseCte[pp2].DP_cohes;
+                GetEta_Effective(p1, pp1,tau_yield, DP_phi, DP_cohes, pressp1, D_tensor_magn,visco_NN,m_NN,n_NN,visco_etap1);
                 visceta=max(visco_etap1,visceta);
 
                 if(tvisco==VISCO_LaminarSPS) {//-Laminar contribution.

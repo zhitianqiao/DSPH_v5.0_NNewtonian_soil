@@ -306,7 +306,17 @@ void JCellDivGpu::SortBasicArrays(const unsigned *idp,const typecode *code,const
   ,unsigned *idp2,typecode *code2,unsigned *dcell2,double2 *posxy2,double *posz2,float4 *velrhop2)
 {
   const unsigned pini=(DivideFull? 0: NpbFinal);
-  cudiv::SortDataParticles(Nptot,pini,SortPart,idp,code,dcell,posxy,posz,velrhop,idp2,code2,dcell2,posxy2,posz2,velrhop2);
+  cudiv::SortDataParticles(Nptot, pini, SortPart, idp, code, dcell, posxy, posz, velrhop, idp2, code2, dcell2, posxy2, posz2, velrhop2);
+}
+//==============================================================================
+/// Reorders basic arrays according to SortPart.
+/// Ordena arrays basicos segun SortPart. 
+//==============================================================================
+void JCellDivGpu::SortBasicArrays(const unsigned *idp, const typecode *code, const unsigned *dcell, const double2 *posxy, const double *posz, const float4 *velrhop, const tsymatrix3f *sigma, const tsymatrix3f *sigmaS
+	, unsigned *idp2, typecode *code2, unsigned *dcell2, double2 *posxy2, double *posz2, float4 *velrhop2, tsymatrix3f *sigma2, tsymatrix3f *sigmaS2)
+{
+	const unsigned pini = (DivideFull ? 0 : NpbFinal);
+	cudiv::SortDataParticles(Nptot, pini, SortPart, idp, code, dcell, posxy, posz, velrhop, sigma, sigmaS, idp2, code2, dcell2, posxy2, posz2, velrhop2, sigma2, sigmaS2);
 }
 
 //==============================================================================
@@ -334,6 +344,15 @@ void JCellDivGpu::SortDataArrays(const float *a,const float *b,float *a2,float *
 void JCellDivGpu::SortDataArrays(const double2 *a,const double *b,const float4 *c,double2 *a2,double *b2,float4 *c2){
   const unsigned pini=(DivideFull? 0: NpbFinal);
   cudiv::SortDataParticles(Nptot,pini,SortPart,a,b,c,a2,b2,c2);
+}
+
+//==============================================================================
+/// Reorders data arrays according to SortPart (for double and double2 values).
+/// Ordena arrays de datos segun SortPart (para valores double y double2).
+//==============================================================================
+void JCellDivGpu::SortDataArrays(const double2 *a, const double *b, const float4 *c,const tsymatrix3f *d, double2 *a2, double *b2, float4 *c2,tsymatrix3f *d2) {
+	const unsigned pini = (DivideFull ? 0 : NpbFinal);
+	cudiv::SortDataParticles(Nptot, pini, SortPart, a, b, c,d, a2, b2, c2,d2);
 }
 
 //==============================================================================

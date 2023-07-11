@@ -317,8 +317,11 @@ typedef struct {
     float DP_alpha;			///<Not use in this current version
     float DP_kappa;			///<Not use in this current version
     float tau_yield;		///<Yield strength of phase
-	float MC_phi;         ///internal friction angle of phase
-	float Cohes;         ///cohesion of phase
+	float DP_phi;         ///internal friction angle of phase
+	float DP_cohes;         ///cohesion of phase
+	float DP_psi;            // dilatancy angle
+	//float MC_phi;         ///internal friction angle of phase
+	//float Cohes;         ///cohesion of phase
 	float E;             ///Young modulus of soil
 	float mu;             ///Poisson's ratio of soil
     unsigned phasetype; ///<Typer of phase
@@ -374,6 +377,20 @@ typedef enum {
   VELGRAD_FDA = 1,      ///<Velocity gradient by Shao etal 2003, eq 20.
   VELGRAD_SPH = 2       ///<Velocity gradient by Fourtakas etal 2016.
 }TpVelGrad;
+
+///Types of constitutive calculation.
+typedef enum {
+	Constitutive_None = 0,
+	Constitutive_Elastic = 1,      ///elastic model
+	Constitutive_EPmodel = 2,      ///elastic-plastic model
+	Constitutive_HBP = 3
+}TpConstitutive;
+
+///Types of viscosity treatment.
+typedef enum {
+	ADT_Artificial = 1,        ///<Artificial pressure tensor.
+	ADT_None = 0
+}TpAcceleration;
 //<vs_non-Newtonian_end>
 
 ///Types of viscosity treatment.

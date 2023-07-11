@@ -470,8 +470,14 @@ protected:
   void AbortBoundOut(JLog2 *log,unsigned nout,const unsigned *idp,const tdouble3 *pos,const tfloat3 *vel,const float *rhop,const typecode *code);
 
   tfloat3* GetPointerDataFloat3(unsigned n,const tdouble3* v)const;
-  void AddBasicArrays(JDataArrays &arrays,unsigned np,const tdouble3 *pos
-    ,const unsigned *idp,const tfloat3 *vel,const float *rhop,const float *aux_n)const;
+  void AddBasicArrays(JDataArrays & arrays, unsigned np, const tdouble3 * pos
+	  , const unsigned * idp, const tfloat3 * vel, const float * rhop, const float * aux_n, const tfloat3 *eps1, const tfloat3 *eps2, const tfloat3 *cig1, const tfloat3 *cig2) const;  //xinjia*/
+  void AddBasicArrays1(JDataArrays & arrays, unsigned np, const tdouble3 * pos
+	  , const unsigned * idp, const tfloat3 * vel, const float * rhop, const float *aux_n,const tfloat3 *eps1) const;  //xinjia*/
+  /*void AddBasicArrays(JDataArrays &arrays,unsigned np,const tdouble3 *pos
+    ,const unsigned *idp,const tfloat3 *vel,const float *rhop,const float *aux_n)const;*/
+  /*void AddBasicArrays(JDataArrays &arrays, unsigned np, const tdouble3 *pos
+	  , const unsigned *idp, const tfloat3 *vel, const float *rhop,const tsymatrix3f *sigma)const;*/
   void SavePartData(unsigned npok,unsigned nout,const JDataArrays& arrays,unsigned ndom,const tdouble3 *vdom,const StInfoPartPlus *infoplus);
   void SaveData(unsigned npok,const JDataArrays& arrays,unsigned ndom,const tdouble3 *vdom,const StInfoPartPlus *infoplus);
   void CheckTermination();
@@ -522,6 +528,8 @@ protected:
   bool MultiPhase;            ///<Indicates if non-newtonian is enabled.
   bool Soil;                  ///<Indicates if soil constitutive is enabled.
   TpVelGrad TVelGrad;         ///<Type of velocity gradient calculation.
+  TpConstitutive TConstitutive;   ////<Type of constitutive calculation.
+  TpAcceleration TAcceleration;   ///<Type of acceleration Diffusion Term. 0:None, 1:artificial pressure
   unsigned PhaseCount;        ///<Number of phases.
   float lamda;								///<time step relaxation parameter.
   StPhaseCte* PhaseCte;       ///<Contains constants of non-newtonian phases [PhaseCount].
@@ -529,10 +537,12 @@ protected:
 
   void InitMultiPhase(const JXml *sxml,std::string xmlpath);
   void ConfigConstantsMP();
-  void LoadMultiphaseData(unsigned np,const unsigned *idp,const typecode *code,tfloat4 *velrhop,float *auxNN)const;
+  void LoadMultiphaseData(unsigned np, const unsigned * idp, const typecode * code, tfloat4 * velrhop, float * auxNN, tfloat3 *epsilon1, tfloat3 *epsilon2, tfloat3 *cigma1, tfloat3 *cigma2, tsymatrix3f *sigma, tsymatrix3f *sigmaS) const; //xinjia
+  void LoadMultiphaseData1(unsigned np,const unsigned *idp,const typecode *code,tfloat4 *velrhop,float *auxNN,tfloat3 *epsilon1)const;
 
   static std::string GetPhaseName(bool multiphase);
   static std::string GetVelGradName(TpVelGrad tvelgrad);
+  static std::string GetConstitutiveName(TpConstitutive tconstitutive);
   //<vs_non-Newtonian_end>
 
 };

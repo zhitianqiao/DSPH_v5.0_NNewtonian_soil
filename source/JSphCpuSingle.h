@@ -48,13 +48,15 @@ protected:
   void PeriodicDuplicateVerlet(unsigned np,unsigned pini,tuint3 cellmax,tdouble3 perinc,const unsigned *listp
     ,unsigned *idp,typecode *code,unsigned *dcell,tdouble3 *pos,tfloat4 *velrhop,tsymatrix3f *spstau,tfloat4 *velrhopm1)const;
   //<vs_non-Newtonian>
-  void PeriodicDuplicateVerlet(unsigned np,unsigned pini,tuint3 cellmax,tdouble3 perinc,const unsigned *listp
-    ,unsigned *idp,typecode *code,unsigned *dcell,tdouble3 *pos,tfloat4 *velrhop,float *auxnn,tfloat4 *velrhopm1)const;
+  /*void PeriodicDuplicateVerlet(unsigned np,unsigned pini,tuint3 cellmax,tdouble3 perinc,const unsigned *listp
+    ,unsigned *idp,typecode *code,unsigned *dcell,tdouble3 *pos,tfloat4 *velrhop,float *auxnn,tfloat4 *velrhopm1)const;*/
+  void PeriodicDuplicateVerlet(unsigned np, unsigned pini, tuint3 cellmax, tdouble3 perinc, const unsigned * listp
+	  , unsigned * idp, typecode * code, unsigned * dcell, tdouble3 * pos, tfloat4 * velrhop, float * auxnn, tfloat3 *epsilon1, tfloat3 *epsilon2, tfloat3 *cigma1, tfloat3 *cigma2, tfloat4 * velrhopm1) const; //xinjia
   void PeriodicDuplicateSymplectic(unsigned np,unsigned pini,tuint3 cellmax,tdouble3 perinc,const unsigned *listp
     ,unsigned *idp,typecode *code,unsigned *dcell,tdouble3 *pos,tfloat4 *velrhop,tsymatrix3f *spstau,tdouble3 *pospre,tfloat4 *velrhoppre)const;
   //<vs_non-Newtonian>
   void PeriodicDuplicateSymplectic(unsigned np,unsigned pini,tuint3 cellmax,tdouble3 perinc,const unsigned *listp
-    ,unsigned *idp,typecode *code,unsigned *dcell,tdouble3 *pos,tfloat4 *velrhop,float *auxnn,tdouble3 *pospre,tfloat4 *velrhoppre)const;
+    ,unsigned *idp,typecode *code,unsigned *dcell,tdouble3 *pos,tfloat4 *velrhop,float *auxnn, tfloat3 *epsilon1, tfloat3 *epsilon2, tfloat3 *cigma1, tfloat3 *cigma2, tdouble3 *pospre,tfloat4 *velrhoppre)const; //xinjia
   void PeriodicDuplicateNormals(unsigned np,unsigned pini,tuint3 cellmax
     ,tdouble3 perinc,const unsigned *listp,tfloat3 *motionvel,tfloat3 *normals)const;
   void RunPeriodic();

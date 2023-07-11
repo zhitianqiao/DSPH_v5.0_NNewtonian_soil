@@ -1,0 +1,132 @@
+<!-- Case name: elastic ring -->
+<?xml version="1.0" encoding="UTF-8" ?>
+<case app="GenCase v5.0.260 (08-05-2022)" date="16-05-2023 15:36:50">
+    <casedef>
+        <constantsdef>
+            <lattice bound="1" fluid="1" />
+            <gravity x="0" y="0" z="-9.81" comment="Gravitational acceleration" units_comment="m/s^2" />
+            <rhop0 value="1850" comment="Reference density of the fluid" units_comment="kg/m^3" />
+            <hswl value="0" auto="true" comment="Maximum still water level to calculate speedofsound using coefsound" units_comment="metres (m)" />
+            <gamma value="7" comment="Polytropic constant for water used in the state equation" />
+            <speedsystem value="0" auto="true" comment="Maximum system speed (by default the dam-break propagation is used)" />
+            <coefsound value="20" comment="Coefficient to multiply speedsystem" />
+            <speedsound value="0" auto="true" comment="Speed of sound to use in the simulation (by default speedofsound=coefsound*speedsystem)" />
+            <coefh value="1" comment="Coefficient to calculate the smoothing length (h=coefh*sqrt(3*dp^2) in 3D)" />
+            <cflnumber value="0.2" comment="Coefficient to multiply dt" />
+            <h value="0" auto="true" units_comment="metres (m)" />
+            <b value="0" auto="true" units_comment="Pascal (Pa)" />
+            <massbound value="0" auto="true" units_comment="kg" />
+            <massfluid value="0" auto="true" units_comment="kg" />
+        </constantsdef>
+        <mkconfig boundcount="241" fluidcount="9" />
+        <geometry>
+            <definition dp="0.01" comment="Initial inter-particle distance" units_comment="metres (m)">
+                <pointmin x="-0.8" y="0.0" z="0.0" />
+                <pointmax x="1.3" y="0.0" z="3.0" />
+            </definition>
+            <commands>
+                <mainlist>
+                    <setshapemode>actual | dp | bound</setshapemode>
+                    <setdrawmode mode="solid" />
+                    <move x="0" y="0" z="2" />
+                    <setmkfluid mk="0" />
+                    <drawfilestl file="Tube.stl" objname="Tube" autofill="false">
+                        <drawscale x="0.001" y="0.001" z="0.001" />
+                    </drawfilestl>
+                    <shapeout file="elastic ring" reset="true" />
+                    <matrixreset />
+                    <setmkbound mk="0" />
+                    <drawbox objname="plane">
+                        <boxfill>solid</boxfill>
+                        <point x="-0.3" y="-0.1" z="0.0" />
+                        <size x="1.6" y="0.3" z="0.1" />
+                    </drawbox>
+                    <shapeout file="plane" />
+                </mainlist>
+            </commands>
+        </geometry>
+    </casedef>
+    <execution>
+	    <special>
+            <nnphases>%Defines non-newtonian phases parameters
+                <phase mkfluid="0">% sand flows
+                    <rhop value="1850" comment="Density of the phase" />
+                    <visco value="0.000" comment="Kinematic viscosity (or consistency index) value for phase (m2/s)" />
+					<E value="800" comment="Specific Young Modulus of Soil (Pa)" />
+					<mu value="0.25" comment="Specific cohesion of Soil " />
+                    <tau_yield value="0" comment="Specific yield stress of phase (Pa m3/kg)" />
+					<MC_phi value="10" comment="Specific friction angle of phase (° )" />
+					<Cohes value="0" comment="Specific cohesion of phase (Pa m3/kg)" />
+                    <tau_max value="0" comment="User defined maximum specific yield stress of phase (Pa m3/kg)" />
+                    <Bi_multi value="45.0" comment="tau_max multiplier for use with Bingham model or bi-viscosity model(tau_bi=tau_max*Bi_multi)" />
+                    <HBP_m value="100" comment="Use 0 to reduce Newtonian liquid, order of 10 for power law and order of 100 for Bingham (sec) " />
+                    <HBP_n value="1.05" comment="Use 1 to reduce to Newtonian, <1 for shear thinning >1 for shear thickenning " />
+                    <phasetype value="0" comment="Non-Newtonian=0 only option in v5.0" />
+                </phase>
+            </nnphases>
+        </special>
+        <parameters>
+            <parameter key="SavePosDouble" value="0" comment="Saves particle position using double precision (default=0)" />
+            <parameter key="Boundary" value="1" comment="Boundary method 1:DBC, 2:mDBC (default=1)" />
+            <parameter key="StepAlgorithm" value="2" comment="Step Algorithm 1:Verlet, 2:Symplectic (default=1)" />
+            <parameter key="VerletSteps" value="40" comment="Verlet only: Number of steps to apply Euler timestepping (default=40)" />
+            <parameter key="Kernel" value="2" comment="Interaction Kernel 1:Cubic Spline, 2:Wendland (default=2)" />
+            <parameter key="RheologyTreatment" value="2" comment="Reology formulation 1:Single-phase classic, 2: Single and multi-phase" />
+			<parameter key="PressureTreatment" value="1" comment="pressure formulation 1:Equation of state, 2: Soil constitutive" />
+            <parameter key="VelocityGradientType" value="2" comment="Velocity gradient formulation 1:FDA, 2:SPH" />
+            <parameter key="ViscoTreatment" value="3" comment="Viscosity formulation 1:Artificial, 2:Laminar+SPS (default=1)" />
+            <parameter key="Visco" value="0.000" comment="Viscosity value" />
+            <parameter key="ViscoBoundFactor" value="0" comment="Multiply viscosity value with boundary (default=1)" />
+            <parameter key="DensityDT" value="0" comment="Density Diffusion Term 0:None, 1:Molteni, 2:Fourtakas, 3:Fourtakas(full) (default=0)" />
+            <parameter key="DensityDTvalue" value="0.1" comment="DDT value (default=0.1)" />
+            <parameter key="Shifting" value="0" comment="Shifting mode 0:None, 1:Ignore bound, 2:Ignore fixed, 3:Full (default=0)" />
+            <parameter key="ShiftCoef" value="-2.0" comment="Coefficient for shifting computation (default=-2)" />
+            <parameter key="ShiftTFS" value="0.0" comment="Threshold to detect free surface. Typically 1.5 for 2D and 2.75 for 3D (default=0)" />
+            <parameter key="RigidAlgorithm" value="1" comment="Rigid Algorithm 1:SPH, 2:DEM, 3:CHRONO (default=1)" />
+            <parameter key="FtPause" value="0.0" comment="Time to freeze the floatings at simulation start (warmup) (default=0)" units_comment="seconds" />
+            <parameter key="CoefDtMin" value="0.05" comment="Coefficient to calculate minimum time step dtmin=coefdtmin*h/speedsound (default=0.05)" />
+            <parameter key="#DtIni" value="0.0001" comment="Initial time step (default=h/speedsound)" units_comment="seconds" />
+            <parameter key="#DtMin" value="5e-06" comment="Minimum time step (default=coefdtmin*h/speedsound)" units_comment="seconds" />
+            <parameter key="DtAllParticles" value="0" comment="Velocity of particles used to calculate DT. 1:All, 0:Only fluid/floating (default=0)" />
+            <parameter key="TimeMax" value="1.5" comment="Time of simulation" units_comment="seconds" />
+            <parameter key="TimeOut" value="0.01" comment="Time out data" units_comment="seconds" />
+            <parameter key="PartsOutMax" value="1" comment="%/100 of fluid particles allowed to be excluded from domain (default=1)" units_comment="decimal" />
+            <parameter key="RhopOutMin" value="1550" comment="Minimum rhop valid (default=700)" units_comment="kg/m^3" />
+            <parameter key="RhopOutMax" value="2150" comment="Maximum rhop valid (default=1300)" units_comment="kg/m^3" />
+            <simulationdomain comment="Defines domain of simulation (default=Uses minimun and maximum position of the generated particles)">
+                <posmin x="default" y="default" z="default" comment="e.g.: x=0.5, y=default-1, z=default-10%" />
+                <posmax x="default" y="default" z="default" />
+            </simulationdomain>
+        </parameters>
+        <particles np="4511" nb="1431" nbf="1431" mkboundfirst="10" mkfluidfirst="1">
+            <_summary>
+                <positions units_comment="metres (m)">
+                    <posmin x="-0.29" y="0" z="0.01" />
+                    <posmax x="1.29" y="0" z="2.99" />
+                </positions>
+                <fixed count="1431" id="0-1430" mkcount="1" mkvalues="10" />
+                <fluid count="3080" id="1431-4510" mkcount="1" mkvalues="1" />
+            </_summary>
+            <fixed mkbound="0" mk="10" begin="0" count="1431" />
+            <fluid mkfluid="0" mk="1" begin="1431" count="3080" />
+        </particles>
+        <constants>
+            <data2d value="true" />
+            <data2dposy value="0" units_comment="metres (m)" />
+            <gravity x="0" y="0" z="-9.81" units_comment="m/s^2" />
+            <cflnumber value="0.2" />
+            <gamma value="7" />
+            <rhop0 value="1850" units_comment="kg/m^3" />
+            <dp value="0.01" units_comment="metres (m)" />
+            <h value="0.014142135624" units_comment="metres (m)" />
+            <b value="622234.28571" units_comment="Pascal (Pa)" />
+            <massbound value="0.185" units_comment="kg" />
+            <massfluid value="0.185" units_comment="kg" />
+        </constants>
+        <motion />
+        <vtkout mkboundfirst="10" mkfluidfirst="1">
+            <vtkfile name="CaseElasticring_plane_Dp.vtk" mk="10" mkbound="0" />
+            <vtkfile name="CaseElasticring_plane_Actual.vtk" mk="10" mkbound="0" />
+        </vtkout>
+    </execution>
+</case>

@@ -283,6 +283,7 @@ void JSph::InitVars(){
   MultiPhase=false;
   Soil = false;
   TVelGrad=VELGRAD_None;
+  TConstitutive = Constitutive_None;
   PhaseCount=0;
   //<vs_non-Newtonian_end>
 }
@@ -607,7 +608,7 @@ void JSph::LoadConfigParameters(const JXml *xml){
   VerletSteps=eparms.GetValueInt("VerletSteps",true,40);
 
   //<vs_non-Newtonian_ini>
-  //-VelocityGradientType switch
+  //-RheologyTreatment switch
   switch(eparms.GetValueInt("RheologyTreatment",true,1)){
     case 1:  MultiPhase=false;    break;
     case 2:  MultiPhase=true;     break;
@@ -628,6 +629,21 @@ void JSph::LoadConfigParameters(const JXml *xml){
     case 1:  TVelGrad=VELGRAD_FDA;  break;
     case 2:  TVelGrad=VELGRAD_SPH;  break;
     default: Run_Exceptioon("Velocity gradient treatment is not valid.");
+  }
+
+  //-constitutive type switch
+  switch (eparms.GetValueInt("ConstitutiveType", true, 1)) {
+    case 1:  TConstitutive = Constitutive_Elastic;  break;
+    case 2:  TConstitutive = Constitutive_EPmodel;  break;
+	case 3:  TConstitutive = Constitutive_HBP;     break;
+  default: Run_Exceptioon("Constitutive treatment is not valid.");
+  }
+
+  //-Acceleration type switch
+  switch (eparms.GetValueInt("AccelerationDT", true, 0)) {
+  case 0:  TAcceleration = ADT_None;     break;
+  case 1:  TAcceleration = ADT_Artificial;      break;
+  default: Run_Exceptioon("Acceleration treatment is not valid.");
   }
   //<vs_non-Newtonian_end>
 
@@ -844,6 +860,15 @@ void JSph::LoadConfigCommands(const JSphCfgRun *cfg){
     Log->PrintWarning("Gravity.x or Gravity.y is not zero, but only gravity.z is used in DDT:2 or DDT:3 calculations.");
   }
   
+  //-Acceleration Diffusion configuration.
+  if (cfg->TAcceleration >= 0) {
+	  switch (cfg->TAcceleration) {
+	  case 0:  TAcceleration = ADT_None;     break;
+	  case 1:  TAcceleration = ADT_Artificial;  break;
+	  default: Run_Exceptioon("Acceleration Diffusion Term mode is not valid.");
+	  }
+  }
+
   //-Shifting configuration.
   if(cfg->Shifting>=0){
     TpShifting shiftmode=SHIFT_None;
@@ -1544,6 +1569,7 @@ void JSph::VisuConfig(){
  if(MultiPhase){ //<vs_non-Newtonian_ini>
     Log->Print(fun::VarStr("RelologyModel",GetPhaseName(MultiPhase)));
     Log->Print(fun::VarStr("VelocityGradients",GetVelGradName(TVelGrad)));
+	Log->Print(fun::VarStr("VelocityGradients", GetConstitutiveName(TConstitutive)));
   } //<vs_non-Newtonian_end>
   //-Kernel.
   std::vector<std::string> lines;
@@ -2470,13 +2496,33 @@ tfloat3* JSph::GetPointerDataFloat3(unsigned n,const tdouble3* v)const{
 /// Adds basic data arrays in object JDataArrays.
 //==============================================================================
 void JSph::AddBasicArrays(JDataArrays &arrays,unsigned np,const tdouble3 *pos
-  ,const unsigned *idp,const tfloat3 *vel,const float *rhop, const float *aux_n)const
+  ,const unsigned *idp,const tfloat3 *vel,const float *rhop,const float *aux_n, const tfloat3 *eps1, const tfloat3 *eps2, const tfloat3 *cig1, const tfloat3 *cig2)const
 {
   arrays.AddArray("Pos" ,np,pos);
   arrays.AddArray("Idp" ,np,idp);
   arrays.AddArray("Vel" ,np,vel);
   arrays.AddArray("Rhop",np,rhop);
   arrays.AddArray("Aux_n", np,aux_n);
+  arrays.AddArray("Eps1", np, eps1); //xinjia
+  arrays.AddArray("Eps2", np, eps2);
+  arrays.AddArray("Cig1", np, cig1);
+  arrays.AddArray("Cig2", np, cig2);
+  //arrays.AddArray("Sigma", np, sigma);
+}
+
+//==============================================================================
+/// Adds basic data arrays in object JDataArrays.
+//==============================================================================
+void JSph::AddBasicArrays1(JDataArrays &arrays, unsigned np, const tdouble3 *pos
+	, const unsigned *idp, const tfloat3 *vel, const float *rhop, const float *aux_n, const tfloat3 *eps1)const
+{
+	arrays.AddArray("Pos", np, pos);
+	arrays.AddArray("Idp", np, idp);
+	arrays.AddArray("Vel", np, vel);
+	arrays.AddArray("Rhop", np, rhop);
+	arrays.AddArray("Aux_n", np, aux_n);
+	arrays.AddArray("Eps1", np, eps1); //xinjia
+	//arrays.AddArray("Sigma", np, sigma);
 }
 
 //==============================================================================
@@ -2535,29 +2581,44 @@ void JSph::SavePartData(unsigned npok,unsigned nout,const JDataArrays& arrays
       if(!(err=arrays.CheckErrorArray("Vel" ,TypeFloat3 ,npok)).empty())Run_Exceptioon(err);
       if(!(err=arrays.CheckErrorArray("Rhop",TypeFloat  ,npok)).empty())Run_Exceptioon(err);
 	  if (!(err = arrays.CheckErrorArray("Aux_n", TypeFloat, npok)).empty())Run_Exceptioon(err);
+	  if (!(err = arrays.CheckErrorArray("Eps1", TypeFloat3, npok)).empty())Run_Exceptioon(err); //xinjia
+	  if (!(err = arrays.CheckErrorArray("Eps2", TypeFloat3, npok)).empty())Run_Exceptioon(err);
+	  if (!(err = arrays.CheckErrorArray("Cig1", TypeFloat3, npok)).empty())Run_Exceptioon(err);
+	  if (!(err = arrays.CheckErrorArray("Cig2", TypeFloat3, npok)).empty())Run_Exceptioon(err);
+	  //if (!(err = arrays.CheckErrorArray("Sigma", TypeSyMatrix3f, npok)).empty())Run_Exceptioon(err);
       const tdouble3 *pos =arrays.GetArrayDouble3("Pos");
       const unsigned *idp =arrays.GetArrayUint   ("Idp");
       const tfloat3  *vel =arrays.GetArrayFloat3 ("Vel");
       const float    *rhop=arrays.GetArrayFloat  ("Rhop");
 	  const float    *aux_n = arrays.GetArrayFloat("Aux_n");
+	  const tfloat3  *eps1 = arrays.GetArrayFloat3("Eps1"); //xinjia
+	  const tfloat3  *eps2 = arrays.GetArrayFloat3("Eps2");
+	  const tfloat3  *cig1 = arrays.GetArrayFloat3("Cig1");
+	  const tfloat3  *cig2 = arrays.GetArrayFloat3("Cig2");
+	  //const tsymatrix3f    *sigma = arrays.GetArraySyMatrix3f("Sigma");
       if(SvPosDouble){
-        DataBi4->AddPartData(npok,idp,pos,vel,rhop,aux_n);
+        //DataBi4->AddPartData(npok,idp,pos,vel,rhop,sigma);
+		DataBi4->AddPartData(npok, idp, pos, vel, rhop, aux_n,eps1,eps2,cig1,cig2);
+		//DataBi4->AddPartData(npok, idp, pos, vel, rhop, aux_n,eps1);
       }
       else{
         posf3=GetPointerDataFloat3(npok,pos);
-        DataBi4->AddPartData(npok,idp,posf3,vel,rhop,aux_n);
+        //DataBi4->AddPartData(npok,idp,posf3,vel,rhop,sigma);
+		DataBi4->AddPartData(npok, idp, posf3, vel, rhop, aux_n,eps1,eps2,cig1,cig2);
+		//DataBi4->AddPartData(npok, idp, posf3, vel, rhop, aux_n,eps1);
       }
-	  //creates a new array for pressure values.
-	  float *press1 = new float[npok];
-	  //computes the pressure of each particles using its density.
-	  for (unsigned p = 0; p < npok; p++) {
-		  press1[p] = (idp[p] <= CaseNbound ? CteB*(pow(rhop[p] / RhopZero, Gamma) - 1.0f) : 0.f);
-	  }
-	  //adds the new array named "Pressure" with the pressure values.
-	  DataBi4->AddPartData("Pressure",npok,press1);
+	  ////creates a new array for pressure values.
+	  //float *press1 = new float[npok];
+	  ////computes the pressure of each particles using its density.
+	  //for (unsigned p = 0; p < npok; p++) {
+		 // press1[p] = (idp[p] <= CaseNbound ? CteB*(pow(rhop[p] / RhopZero, Gamma) - 1.0f) : 0.f);
+	  //}
+	  ////adds the new array named "Pressure" with the pressure values.
+	  //DataBi4->AddPartData("Pressure",npok,press1);
       //-Adds other arrays.
       //const string arrignore=":Pos:Idp:Vel:Rhop:";
-	  const string arrignore = ":Pos:Idp:Vel:Rhop:Aux_n:";
+	  //const string arrignore = ":Pos:Idp:Vel:Rhop:Aux_n:Eps1:";
+	  const string arrignore = ":Pos:Idp:Vel:Rhop:Aux_n:Eps1:Eps2:Cig1:Cig2:";
       for(unsigned ca=0;ca<arrays.Count();ca++){
         const JDataArrays::StDataArray arr=arrays.GetArrayData(ca);
         if(int(arrignore.find(string(":")+arr.keyname+":"))<0){//-Ignore main arrays.
@@ -2565,7 +2626,7 @@ void JSph::SavePartData(unsigned npok,unsigned nout,const JDataArrays& arrays
         }
       }
       DataBi4->SaveFilePart(); //Generates bi4 file.
-	  delete[] press1; press1 = NULL;
+	  //delete[] press1; press1 = NULL;
     }
     if(SvData&SDAT_Info)DataBi4->SaveFileInfo();
     delete[] posf3;
@@ -2916,6 +2977,7 @@ void JSph::ShowResume(bool stop,float tsim,float ttot,bool all,std::string infop
     Log->Printf("Excluded particles...............: %d",nout);
     if(GetOutRhopCount())Log->Printf("Excluded particles due to RhopOut: %u",GetOutRhopCount());
     if(GetOutMoveCount())Log->Printf("Excluded particles due to Velocity: %u",GetOutMoveCount());
+	if(GetOutPosCount())Log->Printf("Excluded particles due to Position: %u", GetOutPosCount());
   }
   Log->Printf("Total Runtime....................: %f sec.",ttot);
   Log->Printf("Simulation Runtime...............: %f sec.",tsim);
@@ -3169,7 +3231,7 @@ void JSph::InitMultiPhase(const JXml *sxml,std::string xmlpath) {
   if(PhaseCount<1)Run_Exceptioon("The number of phases is invalid.");
   TiXmlElement* ele=node->FirstChildElement("phase");
   for(unsigned c=0; ele; c++) {
-    sxml->CheckElementNames(ele,true,"rhop csound gamma visco E mu tau_yield MC_phi Cohes tau_max Bi_multi HBP_n HBP_m cohesion phi phasetype");
+    sxml->CheckElementNames(ele,true,"rhop csound gamma visco E mu tau_yield DP_phi DP_cohes DP_psi tau_max Bi_multi HBP_n HBP_m cohesion phi phasetype");
     const word mkfluid=sxml->GetAttributeWord(ele,"mkfluid");
     PhaseCte[c].mkfluid=mkfluid;
     unsigned cmk=MkInfo->GetMkBlockByMkFluid(PhaseCte[c].mkfluid);
@@ -3181,6 +3243,7 @@ void JSph::InitMultiPhase(const JXml *sxml,std::string xmlpath) {
     PhaseArray[c].rho=sxml->ReadElementFloat(ele,"rhop","value");
     //PhaseArray[c].mass_ph to be setup in ConfigConstants
     PhaseArray[c].Cs0=sxml->ReadElementFloat(ele,"csound","value",true);
+	if (!PhaseArray[c].Cs0)PhaseArray[c].Cs0 = CSP.cs0;
     PhaseArray[c].Gamma=sxml->ReadElementFloat(ele,"gamma","value",true);
     if(!PhaseArray[c].Gamma)PhaseArray[c].Gamma=CSP.gamma;
     // Set PhaseArray that need calculating in the loop
@@ -3193,8 +3256,11 @@ void JSph::InitMultiPhase(const JXml *sxml,std::string xmlpath) {
 	PhaseCte[c].mu = sxml->ReadElementFloat(ele, "mu", "value");
     PhaseCte[c].visco=sxml->ReadElementFloat(ele,"visco","value");
     PhaseCte[c].tau_yield=sxml->ReadElementFloat(ele,"tau_yield","value");
-	PhaseCte[c].MC_phi = sxml->ReadElementFloat(ele, "MC_phi", "value");
-	PhaseCte[c].Cohes = sxml->ReadElementFloat(ele, "Cohes", "value");
+	//PhaseCte[c].MC_phi = sxml->ReadElementFloat(ele, "MC_phi", "value");
+	PhaseCte[c].DP_phi = sxml->ReadElementFloat(ele, "DP_phi", "value");
+	//PhaseCte[c].Cohes = sxml->ReadElementFloat(ele, "Cohes", "value");
+	PhaseCte[c].DP_cohes = sxml->ReadElementFloat(ele, "DP_cohes", "value");
+	PhaseCte[c].DP_psi = sxml->ReadElementFloat(ele, "DP_psi", "value");
     //PhaseCte[c].visco_cr= sxml->ReadElementFloat(ele, "tau_critical", "value");
     PhaseCte[c].tau_max=sxml->ReadElementFloat(ele,"tau_max","value",true);
     if(PhaseCte[c].tau_max)PhaseCte[c].Bi_multi=sxml->ReadElementFloat(ele,"Bi_multi","value");
@@ -3233,8 +3299,11 @@ void JSph::InitMultiPhase(const JXml *sxml,std::string xmlpath) {
 	if (PhaseCte[c].E)Log->Printf("  Young Modulus: %f", ct.E);
 	if (PhaseCte[c].mu)Log->Printf("  Poisson's ratio: %f", ct.mu);
     if(PhaseCte[c].tau_yield)Log->Printf("  Tau_yield: %f",ct.tau_yield);
-	if(PhaseCte[c].MC_phi)Log->Printf("  MC_fai: %f", ct.MC_phi);
-	if(PhaseCte[c].Cohes)Log->Printf("  Cohes: %f", ct.Cohes);
+	if(PhaseCte[c].DP_phi)Log->Printf("  DP_phi: %f", ct.DP_phi);
+	if(PhaseCte[c].DP_cohes)Log->Printf("  DP_cohes: %f", ct.DP_cohes);
+	if(PhaseCte[c].DP_psi)Log->Printf("  DP_psi: %f", ct.DP_psi);
+	//if (PhaseCte[c].MC_phi)Log->Printf("  MC_fai: %f", ct.MC_phi);
+	//if (PhaseCte[c].Cohes)Log->Printf("  Cohes: %f", ct.Cohes);
     if(PhaseCte[c].tau_max)  Log->Printf("  Tau_max..: %f",ct.tau_max);
     Log->Printf("  Papanastasiou *n* parammeter: %f",ct.n_NN);
     Log->Printf("  Papanastasiou *m* parammeter: %f",ct.m_NN);
@@ -3275,10 +3344,15 @@ void JSph::ConfigConstantsMP(){
 /// Load particle data for non-Newtonian flows .
 //==============================================================================
 void JSph::LoadMultiphaseData(unsigned np,const unsigned *idp,const typecode *code
-  ,tfloat4 *velrhop,float *auxNN)const
+  ,tfloat4 *velrhop,float *auxNN, tfloat3 *epsilon1, tfloat3 *epsilon2, tfloat3 *cigma1, tfloat3 *cigma2,tsymatrix3f *sigma, tsymatrix3f *sigmaS)const
 {
   memset(auxNN,0,sizeof(float)*np);
-  //memset(sigma,0, sizeof(tsymatrix3f)*np);
+  memset(epsilon1, 0, sizeof(tfloat3)*np); //xinjia
+  memset(epsilon2, 0, sizeof(tfloat3)*np);
+  memset(cigma1, 0, sizeof(tfloat3)*np);
+  memset(cigma2, 0, sizeof(tfloat3)*np);
+  memset(sigma,0, sizeof(tsymatrix3f)*np);
+  memset(sigmaS, 0, sizeof(tsymatrix3f)*np);
   //Set up variables for multiphase based on the phase
   for(unsigned p=0; p<np; p++) {
     const typecode cod=code[p];
@@ -3288,9 +3362,32 @@ void JSph::LoadMultiphaseData(unsigned np,const unsigned *idp,const typecode *co
 	  
       velrhop[p].w=PhaseArray[cp].rho;
       //auxNN[p] = PhaseCte[cp].visco; //this may be used to load any auxilary value
-	  //tsymatrix3f sigma[p] = TSymMatrix3f();
+	  //tsymatrix3f sigma[p] = TSymMatrix3f()
     }
   }
+}
+
+//==============================================================================
+/// Load particle data for non-Newtonian flows.  ----for gpu
+//==============================================================================
+void JSph::LoadMultiphaseData1(unsigned np, const unsigned *idp, const typecode *code
+	, tfloat4 *velrhop, float *auxNN, tfloat3 *epsilon1)const
+{
+	memset(auxNN, 0, sizeof(float)*np);
+	memset(epsilon1, 0, sizeof(tfloat3)*np); //xinjia
+	//memset(sigma,0, sizeof(tsymatrix3f)*np);
+	//Set up variables for multiphase based on the phase
+	for (unsigned p = 0; p<np; p++) {
+		const typecode cod = code[p];
+		if (CODE_IsFluid(cod)) {
+			unsigned cp = CODE_GetTypeValue(cod);
+			if (cp >= PhaseCount)Run_Exceptioon("Fluid particle without phase information...");
+
+			velrhop[p].w = PhaseArray[cp].rho;
+			//auxNN[p] = PhaseCte[cp].visco; //this may be used to load any auxilary value
+			//tsymatrix3f sigma[p] = TSymMatrix3f();
+		}
+	}
 }
 
 //==============================================================================
@@ -3310,4 +3407,17 @@ std::string JSph::GetVelGradName(TpVelGrad tvelgrad) {
   else tx="???";
   return(tx);
 }
+
+//==============================================================================
+/// Returns the name of the constitutive law in text format.
+//==============================================================================
+std::string JSph::GetConstitutiveName(TpConstitutive tconstitutive) {
+	string tx;
+	if (tconstitutive == Constitutive_Elastic)tx = "Elastic approach";
+	else if (tconstitutive == Constitutive_EPmodel)tx = "Elastic-Plastic approach";
+	else if (tconstitutive == Constitutive_HBP)tx = "HBP model";
+	else tx = "???";
+	return(tx);
+}
+
 

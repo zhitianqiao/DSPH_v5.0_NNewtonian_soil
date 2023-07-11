@@ -343,6 +343,7 @@ void JPartDataBi4::AddPartData(const std::string &name,unsigned npok,const void 
     case TypeUint3:    AddPartData(name,npok,(tuint3  *)v,externalpointer);   break;
     case TypeFloat3:   AddPartData(name,npok,(tfloat3 *)v,externalpointer);   break;
     case TypeDouble3:  AddPartData(name,npok,(tdouble3*)v,externalpointer);   break;
+	case TypeSyMatrix3f:  AddPartData(name, npok, (tsymatrix3f*)v, externalpointer);   break;
     default: Run_Exceptioon("Type of pointer is unknown.");
   }
 }
@@ -352,7 +353,7 @@ void JPartDataBi4::AddPartData(const std::string &name,unsigned npok,const void 
 /// Adds data of particles to new part.
 //==============================================================================
 void JPartDataBi4::AddPartData(unsigned npok,const unsigned *idp,const ullong *idpd
-  ,const tfloat3 *pos,const tdouble3 *posd,const tfloat3 *vel,const float *rhop,const float *aux_n
+  ,const tfloat3 *pos,const tdouble3 *posd,const tfloat3 *vel,const float *rhop,const float *aux_n, const tfloat3 *eps1, const tfloat3 *eps2, const tfloat3 *cig1, const tfloat3 *cig2
   ,bool externalpointer)
 {
   if(!idp&&!idpd)Run_Exceptioon("The id of particles is invalid.");
@@ -367,6 +368,38 @@ void JPartDataBi4::AddPartData(unsigned npok,const unsigned *idp,const ullong *i
   Part->CreateArray("Vel",JBinaryDataDef::DatFloat3,npok,vel,externalpointer);
   Part->CreateArray("Rhop",JBinaryDataDef::DatFloat,npok,rhop,externalpointer);
   Part->CreateArray("Aux_n", JBinaryDataDef::DatFloat, npok, aux_n, externalpointer);
+  Part->CreateArray("Eps1", JBinaryDataDef::DatFloat3, npok, eps1, externalpointer); //xinjia
+  Part->CreateArray("Eps2", JBinaryDataDef::DatFloat3, npok, eps2, externalpointer);
+  Part->CreateArray("Cig1", JBinaryDataDef::DatFloat3, npok, cig1, externalpointer); //xinjia
+  Part->CreateArray("Cig2", JBinaryDataDef::DatFloat3, npok, cig2, externalpointer);
+  //Part->CreateArray("Sigma", JBinaryDataDef::DatSyMatrix3f, npok, sigma, externalpointer);
+}
+
+//==============================================================================
+/// Anhade datos de particulas de de nuevo part.
+/// Adds data of particles to new part.      ---for gpu
+//==============================================================================
+void JPartDataBi4::AddPartData1(unsigned npok, const unsigned *idp, const ullong *idpd
+	, const tfloat3 *pos, const tdouble3 *posd, const tfloat3 *vel, const float *rhop, const float *aux_n, const tfloat3 *eps1
+	, bool externalpointer)
+{
+	if (!idp && !idpd)Run_Exceptioon("The id of particles is invalid.");
+	if (!pos && !posd)Run_Exceptioon("The position of particles is invalid.");
+	//-Comprueba valor de npok. Checks value of npok.
+	if (Part->GetvUint("Npok") != npok)Run_Exceptioon("Part information is invalid.");
+	//-Crea array con particulas validas. Creates valid particles array.
+	if (idpd)Part->CreateArray("Idpd", JBinaryDataDef::DatUllong, npok, idpd, externalpointer);
+	else    Part->CreateArray("Idp", JBinaryDataDef::DatUint, npok, idp, externalpointer);
+	if (posd)Part->CreateArray("Posd", JBinaryDataDef::DatDouble3, npok, posd, externalpointer);
+	else    Part->CreateArray("Pos", JBinaryDataDef::DatFloat3, npok, pos, externalpointer);
+	Part->CreateArray("Vel", JBinaryDataDef::DatFloat3, npok, vel, externalpointer);
+	Part->CreateArray("Rhop", JBinaryDataDef::DatFloat, npok, rhop, externalpointer);
+	Part->CreateArray("Aux_n", JBinaryDataDef::DatFloat, npok, aux_n, externalpointer);
+	Part->CreateArray("Eps1", JBinaryDataDef::DatFloat3, npok, eps1, externalpointer); //xinjia
+	//Part->CreateArray("Eps2", JBinaryDataDef::DatFloat3, npok, eps2, externalpointer);
+	//Part->CreateArray("Cig1", JBinaryDataDef::DatFloat3, npok, cig1, externalpointer); //xinjia
+	//Part->CreateArray("Cig2", JBinaryDataDef::DatFloat3, npok, cig2, externalpointer);
+	//Part->CreateArray("Sigma", JBinaryDataDef::DatSyMatrix3f, npok, sigma, externalpointer);
 }
 
 //==============================================================================

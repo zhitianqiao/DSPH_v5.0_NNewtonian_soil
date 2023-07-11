@@ -71,6 +71,7 @@ class JBinaryDataDef
     ,DatShort=5,DatUshort=6,DatInt=7,DatUint=8,DatLlong=9,DatUllong=10
     ,DatFloat=11,DatDouble=12
     ,DatInt3=20,DatUint3=21,DatFloat3=22,DatDouble3=23 
+	,DatSyMatrix3f=30
   }TpData; 
 
   static std::string TypeToStr(TpData type);

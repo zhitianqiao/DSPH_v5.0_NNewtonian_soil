@@ -218,6 +218,7 @@ void* JBinaryDataArray::AllocPointer(unsigned size)const{
         case JBinaryDataDef::DatUint3:    ptr=new tuint3[size];          break;
         case JBinaryDataDef::DatFloat3:   ptr=new tfloat3[size];         break;
         case JBinaryDataDef::DatDouble3:  ptr=new tdouble3[size];        break;
+		//case JBinaryDataDef::DatSyMatrix3f:  ptr = new tdouble3[size];        break;
         default: Run_Exceptioon("Type of array invalid.");
       }
     }

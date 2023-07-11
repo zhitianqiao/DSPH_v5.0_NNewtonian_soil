@@ -407,7 +407,7 @@
       </Defines>
       <UseHostInclude>false</UseHostInclude>
       <AdditionalOptions>-use_fast_math -Xcompiler "/wd 4267" %(AdditionalOptions)</AdditionalOptions>
-      <CodeGeneration>compute_52,sm_52;compute_61,sm_61</CodeGeneration>
+      <CodeGeneration>compute_52,sm_52</CodeGeneration>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -617,7 +617,9 @@
       <Command>IF EXIST cg_variables.h move cg_variables.h $(Configuration)\</Command>
     </PostBuildEvent>
     <CudaCompile>
-      <CodeGeneration>compute_30,sm_30</CodeGeneration>
+      <CodeGeneration>compute_52,sm_52</CodeGeneration>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+      <GPUDebugInfo>true</GPUDebugInfo>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugCPU|Win32'">
@@ -675,7 +677,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='DebugGPU|x64'">
     <CudaCompile>
       <CodeGeneration>compute_52,sm_52</CodeGeneration>
-      <GPUDebugInfo>false</GPUDebugInfo>
+      <GPUDebugInfo>true</GPUDebugInfo>
       <TargetMachinePlatform>64</TargetMachinePlatform>
     </CudaCompile>
     <Link>

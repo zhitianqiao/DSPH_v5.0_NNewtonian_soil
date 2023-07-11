@@ -99,6 +99,8 @@ typedef struct StrInterParmsg{
   bool multiphase;
   TpVisco tvisco;
   TpVelGrad tvelgrad;
+  TpConstitutive tconstitutive;
+  TpAcceleration tacceleration;
   //<vs_non-Newtonian_end>
   TpDensity tdensity;
   TpShifting shiftmode;
@@ -139,6 +141,13 @@ typedef struct StrInterParmsg{
   tsymatrix3f *gradvel;
   tsymatrix3f *d_tensor; //<vs_non-Newtonian>
   float *auxnn; //<vs_non-Newtonian>
+  float3 *epsilon1; //xinjia
+  float3 *epsilon2;
+  float3 *cigma1;
+  float3 *cigma2;
+  tsymatrix3f *sigma;
+  tsymatrix3f *sigmaS;
+  float *pstress;
 
   ///Structure constructor.
   StrInterParmsg(
@@ -147,7 +156,7 @@ typedef struct StrInterParmsg{
     ,TpKernel tkernel_,TpFtMode ftmode_
     ,bool lamsps_ 
     //<vs_non-Newtonian_ini>
-    , bool multiphase_, TpVisco tvisco_, TpVelGrad tvelgrad_
+    , bool multiphase_, TpVisco tvisco_, TpVelGrad tvelgrad_, TpConstitutive tconstitutive_, TpAcceleration tacceleration_
     //<vs_non-Newtonian_end>		
     ,TpDensity tdensity_,TpShifting shiftmode_
     ,float viscob_,float viscof_
@@ -159,7 +168,7 @@ typedef struct StrInterParmsg{
     ,const float4 *velrhop_,const unsigned *idp_,const typecode *code_
     ,const float *ftomassp_
     ,float *viscdt_,float *viscetadt_,float* ar_,float3 *ace_,float *delta_
-    ,float* visco_eta_, tsymatrix3f *spstau_, tsymatrix3f *spsgradvel_, tsymatrix3f *d_tensor_, float *auxnn_  //<vs_non-Newtonian>
+    ,float* visco_eta_, tsymatrix3f *spstau_, tsymatrix3f *spsgradvel_, tsymatrix3f *d_tensor_, float *auxnn_,float3 *epsilon1_,float3 *epsilon2_,float3 *cigma1_,float3 *cigma2_, tsymatrix3f *sigma_, tsymatrix3f *sigmaS_, float *pstress_//<vs_non-Newtonian>
     ,float4 *shiftposfs_
     ,cudaStream_t stm_
     ,StKerInfo *kerinfo_)
@@ -187,8 +196,8 @@ typedef struct StrInterParmsg{
     gradvel=spsgradvel_;
     shiftposfs=shiftposfs_;
     //<vs_non-Newtonian>    
-	multiphase = multiphase_;  tvelgrad = tvelgrad_; tvisco = tvisco_;
-	visco_eta = visco_eta_; tau = spstau_; gradvel = spsgradvel_; d_tensor = d_tensor_; auxnn = auxnn_;	
+	multiphase = multiphase_;  tvelgrad = tvelgrad_; tconstitutive = tconstitutive_; tacceleration=tacceleration_; tvisco = tvisco_;
+	visco_eta = visco_eta_; tau = spstau_; gradvel = spsgradvel_; d_tensor = d_tensor_; auxnn = auxnn_;	epsilon1 = epsilon1_; epsilon2 = epsilon2_; cigma1 = cigma1_; cigma2 = cigma2_; sigma = sigma_; sigmaS = sigmaS_; pstress = pstress_;
 	viscetadt = viscetadt_;	   
     //-Other values and objects.
     stm=stm_;

@@ -565,6 +565,29 @@ __global__ void KerSortDataParticles(unsigned n,unsigned pini,const unsigned *so
     velrhop2[p]=velrhop[oldpos];
   }
 }
+
+//------------------------------------------------------------------------------
+/// Reorders particle data according to idsort[].
+/// Reordena datos de particulas segun idsort[].
+//------------------------------------------------------------------------------
+__global__ void KerSortDataParticles(unsigned n, unsigned pini, const unsigned *sortpart
+	, const unsigned *idp, const typecode *code, const unsigned *dcell, const double2 *posxy, const double *posz, const float4 *velrhop, const tsymatrix3f *sigma, const tsymatrix3f *sigmaS
+	, unsigned *idp2, typecode *code2, unsigned *dcell2, double2 *posxy2, double *posz2, float4 *velrhop2,tsymatrix3f *sigma2,tsymatrix3f *sigmaS2)
+{
+	const unsigned p = blockIdx.x*blockDim.x + threadIdx.x; //-Particle number.
+	if (p<n) {
+		const unsigned oldpos = (p<pini ? p : sortpart[p]);
+		idp2[p] = idp[oldpos];
+		code2[p] = code[oldpos];
+		dcell2[p] = dcell[oldpos];
+		posxy2[p] = posxy[oldpos];
+		posz2[p] = posz[oldpos];
+		velrhop2[p] = velrhop[oldpos];
+		sigma2[p] = sigma[oldpos];
+		sigmaS2[p] = sigmaS[oldpos];
+	}
+}
+
 //------------------------------------------------------------------------------
 /// Reorders particle data according to sortpart[].
 /// Reordena datos de particulas segun sortpart[].
@@ -603,6 +626,22 @@ __global__ void KerSortDataParticles(unsigned n,unsigned pini,const unsigned *so
     b2[p]=b[oldpos];
     c2[p]=c[oldpos];
   }
+}
+
+//------------------------------------------------------------------------------
+/// Reorders particle data according to sortpart[].
+/// Reordena datos de particulas segun sortpart[].
+//------------------------------------------------------------------------------
+__global__ void KerSortDataParticles(unsigned n, unsigned pini, const unsigned *sortpart, const double2 *a, const double *b, const float4 *c,const tsymatrix3f *d, double2 *a2, double *b2, float4 *c2,tsymatrix3f *d2)
+{
+	const unsigned p = blockIdx.x*blockDim.x + threadIdx.x; //-Particle number.
+	if (p<n) {
+		const unsigned oldpos = (p<pini ? p : sortpart[p]);
+		a2[p] = a[oldpos];
+		b2[p] = b[oldpos];
+		c2[p] = c[oldpos];
+		d2[p] = d[oldpos];
+	}
 }
 //------------------------------------------------------------------------------
 /// Reorders particle data according to sortpart[].
@@ -658,6 +697,19 @@ void SortDataParticles(unsigned np,unsigned pini,const unsigned *sortpart
 /// Reorders particle data according to sortpart.
 /// Reordena datos de particulas segun sortpart.
 //==============================================================================
+void SortDataParticles(unsigned np, unsigned pini, const unsigned *sortpart
+	, const unsigned *idp, const typecode *code, const unsigned *dcell, const double2 *posxy, const double *posz, const float4 *velrhop, const tsymatrix3f *sigma, const tsymatrix3f *sigmaS
+	, unsigned *idp2, typecode *code2, unsigned *dcell2, double2 *posxy2, double *posz2, float4 *velrhop2, tsymatrix3f *sigma2, tsymatrix3f *sigmaS2)
+{
+	if (np) {
+		dim3 sgrid = GetSimpleGridSize(np, DIVBSIZE);
+		KerSortDataParticles << <sgrid, DIVBSIZE >> >(np, pini, sortpart, idp, code, dcell, posxy, posz, velrhop, sigma, sigmaS, idp2, code2, dcell2, posxy2, posz2, velrhop2, sigma2, sigmaS2);
+	}
+}
+//==============================================================================
+/// Reorders particle data according to sortpart.
+/// Reordena datos de particulas segun sortpart.
+//==============================================================================
 void SortDataParticles(unsigned np,unsigned pini,const unsigned *sortpart,const float4 *a,float4 *a2){
   if(np){
     dim3 sgrid=GetSimpleGridSize(np,DIVBSIZE);
@@ -678,11 +730,21 @@ void SortDataParticles(unsigned np,unsigned pini,const unsigned *sortpart,const 
 /// Reorders particle data according to sortpart.
 /// Reordena datos de particulas segun sortpart.
 //==============================================================================
-void SortDataParticles(unsigned np,unsigned pini,const unsigned *sortpart,const double2 *a,const double *b,const float4 *c,double2 *a2,double *b2,float4 *c2){
+void SortDataParticles(unsigned np,unsigned pini,const unsigned *sortpart,const double2 *a,const double *b,const float4 *c,const tsymatrix3f *d,double2 *a2,double *b2,float4 *c2, tsymatrix3f *d2){
   if(np){
     dim3 sgrid=GetSimpleGridSize(np,DIVBSIZE);
-    KerSortDataParticles <<<sgrid,DIVBSIZE>>>(np,pini,sortpart,a,b,c,a2,b2,c2);
+    KerSortDataParticles <<<sgrid,DIVBSIZE>>>(np,pini,sortpart,a,b,c,d,a2,b2,c2,d2);
   }
+}
+//==============================================================================
+/// Reorders particle data according to sortpart.
+/// Reordena datos de particulas segun sortpart.
+//==============================================================================
+void SortDataParticles(unsigned np, unsigned pini, const unsigned *sortpart, const double2 *a, const double *b, const float4 *c, double2 *a2, double *b2, float4 *c2) {
+	if (np) {
+		dim3 sgrid = GetSimpleGridSize(np, DIVBSIZE);
+		KerSortDataParticles << <sgrid, DIVBSIZE >> >(np, pini, sortpart, a, b, c, a2, b2, c2);
+	}
 }
 //==============================================================================
 /// Reorders particle data according to sortpart.

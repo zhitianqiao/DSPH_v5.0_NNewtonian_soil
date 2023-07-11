@@ -74,11 +74,13 @@ void JPartsLoad4::AllocMemory(unsigned count){
   delete[] Idp;      Idp=NULL; 
   delete[] Pos;      Pos=NULL; 
   delete[] VelRhop;  VelRhop=NULL; 
+  //delete[] Sigma;    Sigma = NULL;
   if(Count){
     try{
       Idp=new unsigned[Count];
       Pos=new tdouble3[Count];
       VelRhop=new tfloat4[Count];
+	  //Sigma = new tsymatrix3f[Count];
     }
     catch(const std::bad_alloc){
       Run_Exceptioon("Could not allocate the requested memory.");

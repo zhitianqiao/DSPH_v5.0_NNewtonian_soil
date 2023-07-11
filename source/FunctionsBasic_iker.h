@@ -44,7 +44,6 @@ inline double3 Double3(const tdouble3& v){ double3 p={v.x,v.y,v.z}; return(p); }
 inline double4 Double4(const tdouble4& v){ double4 p={v.x,v.y,v.z,v.w}; return(p); }
 inline double4 Double4(const tplane3d& v){ double4 p={v.a,v.b,v.c,v.d}; return(p); }
 
-
 //==============================================================================
 // Returns gridsize according parameters using X dimension.
 //==============================================================================

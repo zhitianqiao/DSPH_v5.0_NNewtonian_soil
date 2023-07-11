@@ -115,6 +115,13 @@ protected:
   tfloat3 *AuxVel; 
   float *AuxRhop;
   float *AuxNN;			  ///<Auxilary. vs_non-Newtonian
+  tfloat3 *Epsilon1;
+  tfloat3 *Epsilon2;  //output strain
+  tfloat3 *Cigma1;
+  tfloat3 *Cigma2;    //output stres
+
+  tsymatrix3f *Sigma;
+  tsymatrix3f *SigmaS;
 
   unsigned GpuParticlesAllocs;///<Number of allocations.
   unsigned GpuParticlesSize;  ///<Number of particles for which GPU memory was allocated. | Numero de particulas para las cuales se reservo memoria en gpu.
@@ -142,11 +149,13 @@ protected:
     
   //-Variables for compute step: VERLET.
   float4 *VelrhopM1g;  ///<Verlet: in order to keep previous values. | Verlet: para guardar valores anteriores.
+  tsymatrix3f *SigmaM1g;
 
   //-Variables for compute step: SYMPLECTIC.
   double2 *PosxyPreg;  ///<Sympletic: in order to keep previous values. | Sympletic: para guardar valores en predictor.
   double *PoszPreg;
   float4 *VelrhopPreg;
+  tsymatrix3f *SigmaPreg;
 
   //-Variables for floating bodies.
   unsigned *FtRidpg;      ///<Identifier to access to the particles of the floating object [CaseNfloat].
@@ -197,8 +206,15 @@ protected:
   float *Visco_etag;		  ///<Effective viscosity.  
   tsymatrix3f *SpsTaug;       ///<SPS sub-particle stress tensor.
   tsymatrix3f *SpsGradvelg;  ///<Velocity gradients.
+  float *Pstressg;       //artificial pressure
   tsymatrix3f *D_tensorg;     ///<Deformation tensor. 
   float *AuxNNg;	         ///<Auxilary vs_non-Newtonian
+  float3 *Epsilon1g;    //xinjia
+  float3 *Epsilon2g;
+  float3 *Cigma1g;
+  float3 *Cigma2g;
+  tsymatrix3f *Sigmag;       ///
+  tsymatrix3f *SigmaSg;
 
   TimersGpu Timers;  ///<Declares an array with timers for CPU (type structure \ref StSphTimerGpu).
 
@@ -246,7 +262,8 @@ protected:
   void ConstantDataUp();
   void ParticlesDataUp(unsigned n,const tfloat3 *boundnormal);
   unsigned ParticlesDataDown(unsigned n,unsigned pini,bool code,bool onlynormal);
-  
+  unsigned ParticlesDataDown(unsigned n, unsigned pini, bool code, bool onlynormal, float *aux_n,float3 *eps1,float3 *eps2,float3 *cig1,float3 *cig2);
+
   void SelecDevice(int gpuid);
   void ConfigBlockSizes(bool usezone,bool useperi);
 

@@ -128,7 +128,7 @@ void JSphCpuSingle::ConfigDomain(){
   //-Load particle code. | Carga code de particulas.
   LoadCodeParticles(Np,Idpc,Codec);
   
-  if(MultiPhase)LoadMultiphaseData(Np, Idpc, Codec, Velrhopc, AuxNN); //<vs_non-Newtonian>
+  if(MultiPhase)LoadMultiphaseData(Np, Idpc, Codec, Velrhopc, AuxNN, Epsilon1, Epsilon2, Cigma1, Cigma2, Sigmac,SigmaSc); //<vs_non-Newtonian> //xinjia
 
   //-Load normals for boundary particles (fixed and moving).
   if(UseNormals)LoadBoundNormals(Np,Npb,Idpc,Codec,BoundNormalc);
@@ -298,7 +298,7 @@ void JSphCpuSingle::PeriodicDuplicateVerlet(unsigned np,unsigned pini,tuint3 cel
 /// Este kernel vale para single-cpu y multi-cpu porque usa domposmin. 
 //==============================================================================
 void JSphCpuSingle::PeriodicDuplicateVerlet(unsigned np, unsigned pini, tuint3 cellmax, tdouble3 perinc, const unsigned *listp
-	, unsigned *idp, typecode *code, unsigned *dcell, tdouble3 *pos, tfloat4 *velrhop, float *auxnn, tfloat4 *velrhopm1)const
+	, unsigned *idp, typecode *code, unsigned *dcell, tdouble3 *pos, tfloat4 *velrhop, float *auxnn, tfloat3 *epsilon1, tfloat3 *epsilon2, tfloat3 *cigma1, tfloat3 *cigma2, tfloat4 *velrhopm1)const
 {
 	const int n = int(np);
 #ifdef OMP_USE
@@ -316,6 +316,10 @@ void JSphCpuSingle::PeriodicDuplicateVerlet(unsigned np, unsigned pini, tuint3 c
 		velrhop[pnew] = velrhop[pcopy];
 		velrhopm1[pnew] = velrhopm1[pcopy];		
 		if (auxnn)auxnn[pnew] = auxnn[pcopy]; //<vs_non-Newtonian>
+		if (epsilon1)epsilon1[pnew] = epsilon1[pcopy]; //xinjia
+		if (epsilon2)epsilon2[pnew] = epsilon2[pcopy];
+		if (cigma1)cigma1[pnew] = cigma1[pcopy];
+		if (cigma2)cigma2[pnew] = cigma2[pcopy];
 	}
 }
 
@@ -362,7 +366,7 @@ void JSphCpuSingle::PeriodicDuplicateSymplectic(unsigned np,unsigned pini,tuint3
 /// Este kernel vale para single-cpu y multi-cpu porque usa domposmin. 
 //==============================================================================
 void JSphCpuSingle::PeriodicDuplicateSymplectic(unsigned np, unsigned pini, tuint3 cellmax, tdouble3 perinc, const unsigned *listp
-	, unsigned *idp, typecode *code, unsigned *dcell, tdouble3 *pos, tfloat4 *velrhop, float *auxnn, tdouble3 *pospre, tfloat4 *velrhoppre)const
+	, unsigned *idp, typecode *code, unsigned *dcell, tdouble3 *pos, tfloat4 *velrhop, float *auxnn, tfloat3 *epsilon1, tfloat3 *epsilon2, tfloat3 *cigma1, tfloat3 *cigma2, tdouble3 *pospre, tfloat4 *velrhoppre)const
 {
 	const int n = int(np);
 #ifdef OMP_USE
@@ -381,6 +385,10 @@ void JSphCpuSingle::PeriodicDuplicateSymplectic(unsigned np, unsigned pini, tuin
 		if (pospre)pospre[pnew] = pospre[pcopy];
 		if (velrhoppre)velrhoppre[pnew] = velrhoppre[pcopy];		
 		if (auxnn)auxnn[pnew] = auxnn[pcopy]; //<vs_non-Newtonian>
+		if (epsilon1)epsilon1[pnew] = epsilon1[pcopy]; //xinjia
+		if (epsilon2)epsilon2[pnew] = epsilon2[pcopy];
+		if (cigma1)cigma1[pnew] = cigma1[pcopy];
+		if (cigma2)cigma2[pnew] = cigma2[pcopy];
 	}
 }
 
@@ -475,12 +483,12 @@ void JSphCpuSingle::RunPeriodic(){
             //-Crea nuevas particulas periodicas duplicando las particulas de la lista.
             if(TStep==STEP_Verlet){
 				if (!MultiPhase) PeriodicDuplicateVerlet(count,Np,DomCells,perinc,listp,Idpc,Codec,Dcellc,Posc,Velrhopc,SpsTauc,VelrhopM1c); //<vs_non-Newtonian>
-				else             PeriodicDuplicateVerlet(count,Np,DomCells,perinc,listp,Idpc,Codec,Dcellc,Posc,Velrhopc,AuxNN,VelrhopM1c); //<vs_non-Newtonian>
+				else             PeriodicDuplicateVerlet(count,Np,DomCells,perinc,listp,Idpc,Codec,Dcellc,Posc,Velrhopc,AuxNN,Epsilon1,Epsilon2,Cigma1,Cigma2,VelrhopM1c); //<vs_non-Newtonian> //xinjia
 			}
             if(TStep==STEP_Symplectic){
               if((PosPrec || VelrhopPrec) && (!PosPrec || !VelrhopPrec))Run_Exceptioon("Symplectic data is invalid.") ;
               if(!MultiPhase)PeriodicDuplicateSymplectic(count,Np,DomCells,perinc,listp,Idpc,Codec,Dcellc,Posc,Velrhopc,SpsTauc,PosPrec,VelrhopPrec); //<vs_non-Newtonian>
-			  else			 PeriodicDuplicateSymplectic(count, Np, DomCells, perinc, listp, Idpc, Codec, Dcellc, Posc, Velrhopc, AuxNN, PosPrec, VelrhopPrec); //<vs_non-Newtonian>
+			  else			 PeriodicDuplicateSymplectic(count, Np, DomCells, perinc, listp, Idpc, Codec, Dcellc, Posc, Velrhopc, AuxNN, Epsilon1, Epsilon2, Cigma1, Cigma2, PosPrec, VelrhopPrec); //<vs_non-Newtonian>
             }
             if(UseNormals)PeriodicDuplicateNormals(count,Np,DomCells,perinc,listp,BoundNormalc,MotionVelc);
 
@@ -520,18 +528,25 @@ void JSphCpuSingle::RunCellDivide(bool updateperiodic){
   CellDivSingle->SortArray(Posc);
   CellDivSingle->SortArray(Velrhopc);
   CellDivSingle->SortArray(Sigmac);
+  CellDivSingle->SortArray(SigmaSc);
   if(TStep==STEP_Verlet){
     CellDivSingle->SortArray(VelrhopM1c);
 	CellDivSingle->SortArray(SigmaM1c);
+	CellDivSingle->SortArray(SigmaSM1c);
   }
-  else if(TStep==STEP_Symplectic && (PosPrec || VelrhopPrec)){//-In reality, this is only necessary in divide for corrector, not in predictor??? | En realidad solo es necesario en el divide del corrector, no en el predictor???
-    if(!PosPrec || !VelrhopPrec)Run_Exceptioon("Symplectic data is invalid.") ;
+  else if(TStep==STEP_Symplectic && (PosPrec || VelrhopPrec || SigmaPrec)){//-In reality, this is only necessary in divide for corrector, not in predictor??? | En realidad solo es necesario en el divide del corrector, no en el predictor???
+    if(!PosPrec || !VelrhopPrec || !SigmaPrec)Run_Exceptioon("Symplectic data is invalid.") ;
     CellDivSingle->SortArray(PosPrec);
     CellDivSingle->SortArray(VelrhopPrec);
+	CellDivSingle->SortArray(SigmaPrec);
   }
   if(!MultiPhase && TVisco== VISCO_LaminarSPS)CellDivSingle->SortArray(SpsTauc); //<vs_non-Newtonian>
   if(MultiPhase) {  //<vs_non-Newtonian>
 	  CellDivSingle->SortArray(AuxNN); //<vs_non-Newtonian>
+	  CellDivSingle->SortArray(Epsilon1); //xinjia
+	  CellDivSingle->SortArray(Epsilon2);
+	  CellDivSingle->SortArray(Cigma1);
+	  CellDivSingle->SortArray(Cigma2);
   }
   if(UseNormals){
     CellDivSingle->SortArray(BoundNormalc);
@@ -604,8 +619,10 @@ void JSphCpuSingle::Interaction_Forces(TpInterStep interstep){
     ,DivData,Dcellc
     ,Posc,Velrhopc,Idpc,Codec,Pressc,Arc,Acec,Deltac
     ,ShiftingMode,ShiftPosfsc
-    ,SpsTauc,SpsGradvelc,Sigmac, Delta_Sigmac
-    ,Visco_etac,D_tensorc,AuxNN  //<vs_non-Newtonian>
+    ,SpsTauc,SpsGradvelc,Sigmac, Delta_Sigmac, SigmaSc, Rstressc,Pstressc
+    ,Visco_etac,D_tensorc,AuxNN //<vs_non-Newtonian> //xinjia
+	,Epsilon1,Epsilon2
+	,Cigma1,Cigma2
   );
   StInterResultc res;
   res.viscdt=0;
@@ -1176,7 +1193,12 @@ void JSphCpuSingle::SaveData(){
   tfloat3 *vel=NULL;
   float *rhop=NULL;
   float *aux_n=NULL;	//<vs_non-Newtonian>
+  tfloat3 *eps1 = NULL; //xinjia
+  tfloat3 *eps2 = NULL;
+  tfloat3 *cig1 = NULL;
+  tfloat3 *cig2 = NULL;
   tsymatrix3f *sigma = NULL;
+  tsymatrix3f *sigmaS = NULL;
   typecode *code=NULL;
   if(save){
     //-Assign memory and collect particle values. | Asigna memoria y recupera datos de las particulas.
@@ -1186,10 +1208,17 @@ void JSphCpuSingle::SaveData(){
     rhop=ArraysCpu->ReserveFloat();
     //if (MultiPhase)v_eta = ArraysCpu->ReserveFloat();
 	if (MultiPhase) { aux_n = ArraysCpu->ReserveFloat(); 
+	eps1 = ArraysCpu->ReserveFloat3(); //xinjia
+	eps2 = ArraysCpu->ReserveFloat3();
+	cig1 = ArraysCpu->ReserveFloat3();
+	cig2 = ArraysCpu->ReserveFloat3();
 	sigma = ArraysCpu->ReserveSymatrix3f();
+	sigmaS = ArraysCpu->ReserveSymatrix3f();
 	}//<vs_non-Newtonian>
     //if (MultiPhase)code = ArraysCpu->ReserveTypeCode();	//<vs_non-Newtonian>
-    unsigned npnormal=GetParticlesData(Np,0,PeriActive!=0,idp,pos,vel,rhop,code,aux_n);
+    //unsigned npnormal=GetParticlesData(Np,0,PeriActive!=0,idp,pos,vel,rhop,code,sigma);
+	//unsigned npnormal = GetParticlesData(Np, 0, PeriActive != 0, idp, pos, vel, rhop, code, aux_n);
+	unsigned npnormal = GetParticlesData(Np, 0, PeriActive != 0, idp, pos, vel, rhop, code, aux_n, eps1, eps2,cig1,cig2);
     //unsigned npnormal=GetParticlesData(Np,0,PeriActive!=0,idp,pos,vel,rhop,NULL);
     if(npnormal!=npsave)Run_Exceptioon("The number of particles is invalid.");
   }
@@ -1213,7 +1242,9 @@ void JSphCpuSingle::SaveData(){
   const tdouble3 vdom[2]={CellDivSingle->GetDomainLimits(true),CellDivSingle->GetDomainLimits(false)};
   //-Stores particle data. | Graba datos de particulas.
   JDataArrays arrays;
-  AddBasicArrays(arrays,npsave,pos,idp,vel,rhop,aux_n);
+  //AddBasicArrays(arrays,npsave,pos,idp,vel,rhop,sigma);
+  AddBasicArrays(arrays, npsave, pos, idp, vel, rhop, aux_n, eps1, eps2,cig1,cig2); //xinjia
+
   JSph::SaveData(npsave,arrays,1,vdom,&infoplus);
   //-Free auxiliary memory for particle data. | Libera memoria auxiliar para datos de particulas.
   ArraysCpu->Free(idp);
@@ -1221,7 +1252,12 @@ void JSphCpuSingle::SaveData(){
   ArraysCpu->Free(vel);
   ArraysCpu->Free(rhop);
   ArraysCpu->Free(aux_n);	//<vs_non-Newtonian>
-  ArraysCpu->Free(sigma);	
+  ArraysCpu->Free(eps1); //xinjia
+  ArraysCpu->Free(eps2);
+  ArraysCpu->Free(cig1);
+  ArraysCpu->Free(cig2);
+  ArraysCpu->Free(sigma);
+  ArraysCpu->Free(sigmaS);
   if(UseNormals && SvNormals)SaveVtkNormals("normals/Normals.vtk",Part,npsave,Npb,Posc,Idpc,BoundNormalc);
   TmcStop(Timers,TMC_SuSavePart);
 }

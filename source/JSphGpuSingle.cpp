@@ -163,7 +163,9 @@ void JSphGpuSingle::ConfigDomain(){
   //-Loads Code of the particles.
   LoadCodeParticles(Np,Idp,Code);
   //<vs_non-Newtonian>
-  LoadMultiphaseData(Np, Idp, Code, Velrhop, AuxNN);
+  LoadMultiphaseData(Np, Idp, Code, Velrhop, AuxNN,Epsilon1,Epsilon2,Cigma1,Cigma2,Sigma,SigmaS);
+  //LoadMultiphaseData1(Np, Idp, Code, Velrhop, AuxNN, Epsilon1);
+  //LoadMultiphaseData(Np, Idp, Code, Velrhop);
 
   //-Load normals for boundary particles (fixed and moving).
   tfloat3 *boundnormal=NULL;
@@ -353,28 +355,39 @@ void JSphGpuSingle::RunCellDivide(bool updateperiodic){
     double2*  posxyg=ArraysGpu->ReserveDouble2();
     double*   poszg=ArraysGpu->ReserveDouble();
     float4*   velrhopg=ArraysGpu->ReserveFloat4();
-    CellDivSingle->SortBasicArrays(Idpg,Codeg,Dcellg,Posxyg,Poszg,Velrhopg,idpg,codeg,dcellg,posxyg,poszg,velrhopg);
+	tsymatrix3f* sigmag= ArraysGpu->ReserveSymatrix3f();
+	tsymatrix3f* sigmaSg = ArraysGpu->ReserveSymatrix3f();
+    CellDivSingle->SortBasicArrays(Idpg,Codeg,Dcellg,Posxyg,Poszg,Velrhopg,Sigmag,SigmaSg,idpg,codeg,dcellg,posxyg,poszg,velrhopg,sigmag,sigmaSg);
+	//CellDivSingle->SortBasicArrays(Idpg, Codeg, Dcellg, Posxyg, Poszg, Velrhopg, idpg, codeg, dcellg, posxyg, poszg, velrhopg);
     swap(Idpg,idpg);           ArraysGpu->Free(idpg);
     swap(Codeg,codeg);         ArraysGpu->Free(codeg);
     swap(Dcellg,dcellg);       ArraysGpu->Free(dcellg);
     swap(Posxyg,posxyg);       ArraysGpu->Free(posxyg);
     swap(Poszg,poszg);         ArraysGpu->Free(poszg);
     swap(Velrhopg,velrhopg);   ArraysGpu->Free(velrhopg);
+	swap(Sigmag, sigmag);   ArraysGpu->Free(sigmag);
+	swap(SigmaSg, sigmaSg);   ArraysGpu->Free(sigmaSg);
   }
   if(TStep==STEP_Verlet){
     float4* velrhopg=ArraysGpu->ReserveFloat4();
     CellDivSingle->SortDataArrays(VelrhopM1g,velrhopg);
     swap(VelrhopM1g,velrhopg);   ArraysGpu->Free(velrhopg);
+	tsymatrix3f* sigmag= ArraysGpu->ReserveSymatrix3f();
+	CellDivSingle->SortDataArrays(SigmaM1g, sigmag);
+	swap(SigmaM1g, sigmag);   ArraysGpu->Free(sigmag);
   }
-  else if(TStep==STEP_Symplectic && (PosxyPreg || PoszPreg || VelrhopPreg)){ //-In reality, only necessary in the corrector not the predictor step??? | En realidad solo es necesario en el divide del corrector, no en el predictor??? 
-    if(!PosxyPreg || !PoszPreg || !VelrhopPreg)Run_Exceptioon("Symplectic data is invalid.") ;
+  else if(TStep==STEP_Symplectic && (PosxyPreg || PoszPreg || VelrhopPreg || SigmaPreg)){ //-In reality, only necessary in the corrector not the predictor step??? | En realidad solo es necesario en el divide del corrector, no en el predictor??? 
+    if(!PosxyPreg || !PoszPreg || !VelrhopPreg || !SigmaPreg)Run_Exceptioon("Symplectic data is invalid.") ;
     double2* posxyg=ArraysGpu->ReserveDouble2();
     double* poszg=ArraysGpu->ReserveDouble();
     float4* velrhopg=ArraysGpu->ReserveFloat4();
-    CellDivSingle->SortDataArrays(PosxyPreg,PoszPreg,VelrhopPreg,posxyg,poszg,velrhopg);
+	tsymatrix3f* sigmag = ArraysGpu->ReserveSymatrix3f();
+    //CellDivSingle->SortDataArrays(PosxyPreg,PoszPreg,VelrhopPreg,posxyg,poszg,velrhopg);
+	CellDivSingle->SortDataArrays(PosxyPreg, PoszPreg, VelrhopPreg, SigmaPreg, posxyg, poszg, velrhopg,sigmag);
     swap(PosxyPreg,posxyg);      ArraysGpu->Free(posxyg);
     swap(PoszPreg,poszg);        ArraysGpu->Free(poszg);
     swap(VelrhopPreg,velrhopg);  ArraysGpu->Free(velrhopg);
+	swap(SigmaPreg, sigmag);  ArraysGpu->Free(sigmag);
   }
   if(!MultiPhase && TVisco==VISCO_LaminarSPS) { //<vs_non-Newtonian>
     tsymatrix3f *spstaug=ArraysGpu->ReserveSymatrix3f();
@@ -386,13 +399,21 @@ void JSphGpuSingle::RunCellDivide(bool updateperiodic){
     CellDivSingle->SortDataArrays(AuxNNg,auxg);
     swap(AuxNNg,auxg);  ArraysGpu->Free(auxg);
 
-    //tsymatrix3f *spstaug = ArraysGpu->ReserveSymatrix3f();
-    //CellDivSingle->SortDataArrays(SpsTaug, spstaug);
-    //swap(SpsTaug, spstaug);  ArraysGpu->Free(spstaug);
+	float3 *epsilon1g = ArraysGpu->ReserveFloat3();
+	CellDivSingle->SortDataArrays(Epsilon1g, epsilon1g);
+	swap(Epsilon1g, epsilon1g);  ArraysGpu->Free(epsilon1g);
 
-    //tsymatrix3f *d_tensor = ArraysGpu->ReserveSymatrix3f();
-    //CellDivSingle->SortDataArrays(D_tensorg, d_tensor);
-    //swap(D_tensorg, d_tensor);  ArraysGpu->Free(d_tensor);
+	float3 *epsilon2g = ArraysGpu->ReserveFloat3();
+	CellDivSingle->SortDataArrays(Epsilon2g, epsilon2g);
+	swap(Epsilon2g, epsilon2g);  ArraysGpu->Free(epsilon2g);
+
+	float3 *cigma1g = ArraysGpu->ReserveFloat3();
+	CellDivSingle->SortDataArrays(Cigma1g, cigma1g);
+	swap(Cigma1g, cigma1g);  ArraysGpu->Free(cigma1g);
+
+	float3 *cigma2g = ArraysGpu->ReserveFloat3();
+	CellDivSingle->SortDataArrays(Cigma2g, cigma2g);
+	swap(Cigma2g, cigma2g);  ArraysGpu->Free(cigma2g);
   }
   if(UseNormals){
     float3* boundnormalg=ArraysGpu->ReserveFloat3();
@@ -462,14 +483,14 @@ void JSphGpuSingle::Interaction_Forces(TpInterStep interstep){
   const StInterParmsg parms=StrInterParmsg(Simulate2D
     ,Symmetry //<vs_syymmetry>
     ,TKernel,FtMode
-    ,lamsps, MultiPhase, TVisco, TVelGrad, TDensity, ShiftingMode    
+    ,lamsps, MultiPhase, TVisco, TVelGrad, TConstitutive,TAcceleration,TDensity, ShiftingMode    
     ,Visco*ViscoBoundFactor,Visco
     ,bsbound,bsfluid,Np,Npb,NpbOk
     ,0,DivData,Dcellg
     ,Posxyg,Poszg,PosCellg,Velrhopg,Idpg,Codeg
     ,FtoMasspg
     ,ViscDtg, ViscEtaDtg,Arg,Aceg,Deltag
-    ,Visco_etag, SpsTaug, SpsGradvelg, D_tensorg, AuxNNg
+    ,Visco_etag, SpsTaug, SpsGradvelg, D_tensorg, AuxNNg,Epsilon1g,Epsilon2g,Cigma1g,Cigma2g,Sigmag,SigmaSg,Pstressg
     ,ShiftPosfsg
     ,NULL,NULL);
 
@@ -882,9 +903,22 @@ void JSphGpuSingle::SaveData(){
   const bool save=(SvData!=SDAT_None && SvData!=SDAT_Info);
   const unsigned npsave=Np-NpbPer-NpfPer; //-Subtracts the periodic particles if they exist. | Resta las periodicas si las hubiera.
   //-Retrieves particle data from the GPU. | Recupera datos de particulas en GPU.
+  float *aux_n = NULL;
+  float3 *eps1 = NULL; //xinjia
+  float3 *eps2 = NULL;
+  float3 *cig1 = NULL;
+  float3 *cig2 = NULL;
   if(save){
     TmgStart(Timers,TMG_SuDownData);
-    unsigned npnormal=ParticlesDataDown(Np,0,false,PeriActive!=0);
+	if (MultiPhase) {
+		aux_n = ArraysGpu->ReserveFloat();
+		eps1 = ArraysGpu->ReserveFloat3(); //xinjia
+		eps2 = ArraysGpu->ReserveFloat3();
+		cig1 = ArraysGpu->ReserveFloat3();
+		cig2 = ArraysGpu->ReserveFloat3();
+	}
+    unsigned npnormal=ParticlesDataDown(Np,0,false,PeriActive!=0,aux_n,eps1,eps2,cig1,cig2); //when output visco,strain,stress
+	//unsigned npnormal=ParticlesDataDown(Np,0,false,PeriActive!=0);
     if(npnormal!=npsave)Run_Exceptioon("The number of particles is invalid.");
     TmgStop(Timers,TMG_SuDownData);
   }
@@ -917,8 +951,14 @@ void JSphGpuSingle::SaveData(){
   const tdouble3 vdom[2]={CellDivSingle->GetDomainLimits(true),CellDivSingle->GetDomainLimits(false)};
   //-Stores particle data. | Graba datos de particulas.
   JDataArrays arrays;
-  AddBasicArrays(arrays,npsave,AuxPos,Idp,AuxVel,AuxRhop);
+  //AddBasicArrays1(arrays,npsave,AuxPos,Idp,AuxVel,AuxRhop,AuxNN,Epsilon1);
+  AddBasicArrays(arrays, npsave, AuxPos, Idp, AuxVel, AuxRhop, AuxNN, Epsilon1, Epsilon2, Cigma1, Cigma2);
   JSph::SaveData(npsave,arrays,1,vdom,&infoplus);
+  ArraysGpu->Free(aux_n);
+  ArraysGpu->Free(eps1);
+  ArraysGpu->Free(eps2);
+  ArraysGpu->Free(cig1);
+  ArraysGpu->Free(cig2);
   if(UseNormals && SvNormals)SaveVtkNormalsGpu("normals/Normals.vtk",Part,npsave,Npb,Posxyg,Poszg,Idpg,BoundNormalg);
   TmgStop(Timers,TMG_SuSavePart);
 }

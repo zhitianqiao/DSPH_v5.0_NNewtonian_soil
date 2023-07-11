@@ -1,0 +1,155 @@
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_malloc.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_memcpy_s.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_memory.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_search.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_share.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_stdio_config.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_terminate.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_wconio.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_wctype.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_wdirect.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_wio.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_wprocess.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_wstdio.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_wstdlib.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_wstring.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\corecrt_wtime.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\crtdbg.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\ctype.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\errno.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\float.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\locale.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\malloc.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\math.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\share.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stddef.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdio.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\stdlib.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\string.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\sys\stat.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\sys\types.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\time.h
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.10240.0\ucrt\wchar.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\builtin_types.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\channel_descriptor.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\crt\common_functions.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\crt\device_double_functions.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\crt\device_double_functions.hpp
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\crt\device_functions.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\crt\device_functions.hpp
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\crt\host_config.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\crt\host_defines.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\crt\math_functions.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\crt\math_functions.hpp
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\crt\sm_70_rt.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\crt\sm_80_rt.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\cuda_device_runtime_api.h
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v11.1\include\cuda_runtime.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\cuda_runtime_api.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\cuda_surface_types.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\cuda_texture_types.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\device_atomic_functions.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\device_launch_parameters.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\device_types.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\driver_functions.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\driver_types.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\library_types.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\sm_20_atomic_functions.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\sm_20_intrinsics.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\sm_30_intrinsics.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\sm_32_atomic_functions.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\sm_32_intrinsics.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\sm_35_atomic_functions.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\sm_35_intrinsics.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\sm_60_atomic_functions.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\sm_61_intrinsics.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\surface_functions.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\surface_indirect_functions.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\surface_types.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\texture_fetch_functions.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\texture_indirect_functions.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\texture_types.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\vector_functions.h
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\vector_functions.hpp
+c:\program files\nvidia gpu computing toolkit\cuda\v11.1\include\vector_types.h
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\Functions.h
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\FunctionsBasic_iker.h
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\FunctionsCuda.h
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JReduSum_ker.h
+C:\Users\Zhitian Qiao\Desktop\DualSPHysics_v5.0\src_mphase\DSPH_v5.0_NNewtonian\source\JWaveOrder2_ker.cu
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\JWaveOrder2_ker.h
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\RunExceptionDef.h
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\RunExceptionGpuDef.h
+c:\users\zhitian qiao\desktop\dualsphysics_v5.0\src_mphase\dsph_v5.0_nnewtonian\source\TypesDef.h
+E:\VS2015\VC\include\ammintrin.h
+E:\VS2015\VC\include\cerrno
+E:\VS2015\VC\include\cfloat
+E:\VS2015\VC\include\climits
+E:\VS2015\VC\include\cmath
+E:\VS2015\VC\include\ConcurrencySal.h
+E:\VS2015\VC\include\crtdefs.h
+E:\VS2015\VC\include\cstddef
+E:\VS2015\VC\include\cstdint
+E:\VS2015\VC\include\cstdio
+E:\VS2015\VC\include\cstdlib
+E:\VS2015\VC\include\cstring
+E:\VS2015\VC\include\ctime
+E:\VS2015\VC\include\cwchar
+E:\VS2015\VC\include\eh.h
+E:\VS2015\VC\include\emmintrin.h
+E:\VS2015\VC\include\exception
+E:\VS2015\VC\include\immintrin.h
+E:\VS2015\VC\include\initializer_list
+E:\VS2015\VC\include\intrin.h
+E:\VS2015\VC\include\ios
+E:\VS2015\VC\include\iosfwd
+E:\VS2015\VC\include\istream
+E:\VS2015\VC\include\limits
+E:\VS2015\VC\include\limits.h
+E:\VS2015\VC\include\mm3dnow.h
+E:\VS2015\VC\include\mmintrin.h
+E:\VS2015\VC\include\new
+E:\VS2015\VC\include\nmmintrin.h
+E:\VS2015\VC\include\ostream
+E:\VS2015\VC\include\pmmintrin.h
+E:\VS2015\VC\include\sal.h
+E:\VS2015\VC\include\setjmp.h
+E:\VS2015\VC\include\smmintrin.h
+E:\VS2015\VC\include\stdexcept
+E:\VS2015\VC\include\stdint.h
+E:\VS2015\VC\include\streambuf
+E:\VS2015\VC\include\string
+E:\VS2015\VC\include\system_error
+E:\VS2015\VC\include\tmmintrin.h
+E:\VS2015\VC\include\typeinfo
+E:\VS2015\VC\include\type_traits
+E:\VS2015\VC\include\use_ansi.h
+E:\VS2015\VC\include\utility
+E:\VS2015\VC\include\vadefs.h
+E:\VS2015\VC\include\vcruntime.h
+E:\VS2015\VC\include\vcruntime_exception.h
+E:\VS2015\VC\include\vcruntime_new.h
+E:\VS2015\VC\include\vcruntime_new_debug.h
+E:\VS2015\VC\include\vcruntime_string.h
+E:\VS2015\VC\include\vcruntime_typeinfo.h
+E:\VS2015\VC\include\vector
+E:\VS2015\VC\include\wmmintrin.h
+E:\VS2015\VC\include\xatomic0.h
+E:\VS2015\VC\include\xfacet
+E:\VS2015\VC\include\xiosbase
+E:\VS2015\VC\include\xkeycheck.h
+E:\VS2015\VC\include\xlocale
+E:\VS2015\VC\include\xlocinfo
+E:\VS2015\VC\include\xlocinfo.h
+E:\VS2015\VC\include\xlocnum
+E:\VS2015\VC\include\xmemory
+E:\VS2015\VC\include\xmemory0
+E:\VS2015\VC\include\xmmintrin.h
+E:\VS2015\VC\include\xstddef
+E:\VS2015\VC\include\xstring
+E:\VS2015\VC\include\xtgmath.h
+E:\VS2015\VC\include\xtr1common
+E:\VS2015\VC\include\xutility
+E:\VS2015\VC\include\ymath.h
+E:\VS2015\VC\include\yvals.h

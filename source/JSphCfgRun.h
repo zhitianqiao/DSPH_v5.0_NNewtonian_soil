@@ -57,6 +57,7 @@ public:
   float ViscoBoundFactor;
   double TimeMax,TimePart;
   int TDensity;   ///<Density Diffusion Term 0:None, 1:Molteni, 2:Fourtakas, 3:Fourtakas(full) (default=0)
+  int TAcceleration;  ///<Acceleration Diffusion Term 0:None, 1:artificial pressure
   float DDTValue; ///<Value used with Density Diffusion Term (default=0.1)
   int Shifting;   ///<Shifting mode -1:no defined, 0:none, 1:nobound, 2:nofixed, 3:full
   bool SvRes,SvTimers,SvDomainVtk;

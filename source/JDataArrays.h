@@ -103,6 +103,7 @@ public:
   unsigned AddArray(std::string fullname,unsigned count,const unsigned *ptr,bool delptr=false){ return(AddArray(fullname,TypeUint   ,count,(void*)ptr,delptr)); }
   unsigned AddArray(std::string fullname,unsigned count,const int      *ptr,bool delptr=false){ return(AddArray(fullname,TypeInt    ,count,(void*)ptr,delptr)); }
   unsigned AddArray(std::string fullname,unsigned count,const float    *ptr,bool delptr=false){ return(AddArray(fullname,TypeFloat  ,count,(void*)ptr,delptr)); }
+  unsigned AddArray(std::string fullname,unsigned count,const tsymatrix3f    *ptr, bool delptr = false) { return(AddArray(fullname, TypeSyMatrix3f, count, (void*)ptr, delptr)); }
   unsigned AddArray(std::string fullname,unsigned count,const double   *ptr,bool delptr=false){ return(AddArray(fullname,TypeDouble ,count,(void*)ptr,delptr)); }
   unsigned AddArray(std::string fullname,unsigned count,const tuint3   *ptr,bool delptr=false){ return(AddArray(fullname,TypeUint3  ,count,(void*)ptr,delptr)); }
   unsigned AddArray(std::string fullname,unsigned count,const tint3    *ptr,bool delptr=false){ return(AddArray(fullname,TypeInt3   ,count,(void*)ptr,delptr)); }
@@ -185,6 +186,7 @@ public:
   const unsigned* GetArrayUint   (const std::string &keyname,unsigned count=0)const{ return((unsigned*)GetArrayPtr(keyname,TypeUint   ,count)); }
   const int*      GetArrayInt    (const std::string &keyname,unsigned count=0)const{ return((int*     )GetArrayPtr(keyname,TypeInt    ,count)); }
   const float*    GetArrayFloat  (const std::string &keyname,unsigned count=0)const{ return((float*   )GetArrayPtr(keyname,TypeFloat  ,count)); }
+  const tsymatrix3f*    GetArraySyMatrix3f (const std::string &keyname, unsigned count = 0)const { return((tsymatrix3f*)GetArrayPtr(keyname, TypeSyMatrix3f, count)); }
   const double*   GetArrayDouble (const std::string &keyname,unsigned count=0)const{ return((double*  )GetArrayPtr(keyname,TypeDouble ,count)); }
   const tuint3*   GetArrayUint3  (const std::string &keyname,unsigned count=0)const{ return((tuint3*  )GetArrayPtr(keyname,TypeUint3  ,count)); }
   const tint3*    GetArrayInt3   (const std::string &keyname,unsigned count=0)const{ return((tint3*   )GetArrayPtr(keyname,TypeInt3   ,count)); }

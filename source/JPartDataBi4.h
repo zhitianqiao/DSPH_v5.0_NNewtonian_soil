@@ -92,7 +92,9 @@ class JPartDataBi4 : protected JObject
   unsigned Cpart;    ///<Numero de PART. PART number.
 
   static std::string GetNamePart(unsigned cpart);
-  void AddPartData(unsigned npok,const unsigned *idp,const ullong *idpd,const tfloat3 *pos,const tdouble3 *posd,const tfloat3 *vel,const float *rhop,const float *aux_n,bool externalpointer=true);
+  void AddPartData(unsigned npok,const unsigned *idp,const ullong *idpd,const tfloat3 *pos,const tdouble3 *posd,const tfloat3 *vel,const float *rhop,const float *aux_n, const tfloat3 *eps1,const tfloat3 *eps2, const tfloat3 *cig1, const tfloat3 *cig2, bool externalpointer=true);
+  void AddPartData1(unsigned npok, const unsigned *idp, const ullong *idpd, const tfloat3 *pos, const tdouble3 *posd, const tfloat3 *vel, const float *rhop, const float *aux_n, const tfloat3 *eps1, bool externalpointer = true);
+  //void AddPartData(unsigned npok, const unsigned *idp, const ullong *idpd, const tfloat3 *pos, const tdouble3 *posd, const tfloat3 *vel, const float *rhop, const tsymatrix3f *sigma, bool externalpointer = true);
   void AddPartDataVar(const std::string &name,JBinaryDataDef::TpData type,unsigned npok,const void *v,bool externalpointer=true);
 
   void SaveFileData(std::string fname);
@@ -131,10 +133,18 @@ class JPartDataBi4 : protected JObject
 
   //-Configuracion de parts. Configuration of parts.
   JBinaryData* AddPartInfo(unsigned cpart,double timestep,unsigned npok,unsigned nout,unsigned step,double runtime,tdouble3 domainmin,tdouble3 domainmax,ullong nptotal=0,ullong idmax=0);
-  void AddPartData(unsigned npok,const unsigned *idp, const tfloat3  *pos, const tfloat3 *vel,const float *rhop, const float *aux_n, bool externalpointer=true){  AddPartData(npok,idp ,NULL,pos ,NULL,vel,rhop,aux_n,externalpointer);  }
-  void AddPartData(unsigned npok,const unsigned *idp, const tdouble3 *posd,const tfloat3 *vel,const float *rhop,const float *aux_n,bool externalpointer=true){  AddPartData(npok,idp ,NULL,NULL,posd,vel,rhop,aux_n,externalpointer);  }
-  void AddPartData(unsigned npok,const ullong   *idpd,const tfloat3  *pos, const tfloat3 *vel,const float *rhop, const float *aux_n, bool externalpointer=true){  AddPartData(npok,NULL,idpd,pos ,NULL,vel,rhop,aux_n,externalpointer);  }
-  void AddPartData(unsigned npok,const ullong   *idpd,const tdouble3 *posd,const tfloat3 *vel,const float *rhop, const float *aux_n, bool externalpointer=true){  AddPartData(npok,NULL,idpd,NULL,posd,vel,rhop,aux_n,externalpointer);  }
+  /*void AddPartData(unsigned npok, const unsigned *idp, const tfloat3  *pos, const tfloat3 *vel, const float *rhop, const float *aux_n, const tfloat3 *eps1, bool externalpointer = true) { AddPartData1(npok, idp, NULL, pos, NULL, vel, rhop, aux_n,eps1,externalpointer); } //xinjia
+  void AddPartData(unsigned npok, const unsigned *idp, const tdouble3 *posd, const tfloat3 *vel, const float *rhop, const float *aux_n, const tfloat3 *eps1, bool externalpointer = true) { AddPartData1(npok, idp, NULL, NULL, posd, vel, rhop, aux_n,eps1, externalpointer); } //xinjia
+  void AddPartData(unsigned npok, const ullong   *idpd, const tfloat3  *pos, const tfloat3 *vel, const float *rhop, const float *aux_n, const tfloat3 *eps1, bool externalpointer = true) { AddPartData1(npok, NULL, idpd, pos, NULL, vel, rhop, aux_n, eps1,externalpointer); } //xinjia
+  void AddPartData(unsigned npok, const ullong   *idpd, const tdouble3 *posd, const tfloat3 *vel, const float *rhop, const float *aux_n, const tfloat3 *eps1, bool externalpointer = true) { AddPartData1(npok, NULL, idpd, NULL, posd, vel, rhop, aux_n, eps1,externalpointer); } //xinjia */
+  void AddPartData(unsigned npok,const unsigned *idp, const tfloat3  *pos, const tfloat3 *vel,const float *rhop, const float *aux_n, const tfloat3 *eps1, const tfloat3 *eps2, const tfloat3 *cig1, const tfloat3 *cig2, bool externalpointer=true){  AddPartData(npok,idp ,NULL,pos ,NULL,vel,rhop,aux_n,eps1,eps2,cig1,cig2,externalpointer);  } //xinjia
+  void AddPartData(unsigned npok,const unsigned *idp, const tdouble3 *posd,const tfloat3 *vel,const float *rhop,const float *aux_n, const tfloat3 *eps1, const tfloat3 *eps2, const tfloat3 *cig1, const tfloat3 *cig2, bool externalpointer=true){  AddPartData(npok,idp ,NULL,NULL,posd,vel,rhop,aux_n,eps1,eps2,cig1,cig2, externalpointer);  } //xinjia
+  void AddPartData(unsigned npok,const ullong   *idpd,const tfloat3  *pos, const tfloat3 *vel,const float *rhop, const float *aux_n, const tfloat3 *eps1, const tfloat3 *eps2, const tfloat3 *cig1, const tfloat3 *cig2, bool externalpointer=true){  AddPartData(npok,NULL,idpd,pos ,NULL,vel,rhop,aux_n,eps1,eps2,cig1,cig2, externalpointer);  } //xinjia
+  void AddPartData(unsigned npok,const ullong   *idpd,const tdouble3 *posd,const tfloat3 *vel,const float *rhop, const float *aux_n, const tfloat3 *eps1, const tfloat3 *eps2, const tfloat3 *cig1, const tfloat3 *cig2, bool externalpointer=true){  AddPartData(npok,NULL,idpd,NULL,posd,vel,rhop,aux_n,eps1,eps2,cig1,cig2, externalpointer);  } //xinjia */
+  //void AddPartData(unsigned npok,const unsigned *idp, const tfloat3  *pos, const tfloat3 *vel,const float *rhop, const tsymatrix3f *sigma, bool externalpointer=true){  AddPartData(npok,idp ,NULL,pos ,NULL,vel,rhop,sigma,externalpointer);  }
+  //void AddPartData(unsigned npok,const unsigned *idp, const tdouble3 *posd,const tfloat3 *vel,const float *rhop, const tsymatrix3f *sigma,bool externalpointer=true){  AddPartData(npok,idp ,NULL,NULL,posd,vel,rhop,sigma,externalpointer);  }
+  //void AddPartData(unsigned npok,const ullong   *idpd,const tfloat3  *pos, const tfloat3 *vel,const float *rhop, const tsymatrix3f *sigma, bool externalpointer=true){  AddPartData(npok,NULL,idpd,pos ,NULL,vel,rhop,sigma,externalpointer);  }
+  //void AddPartData(unsigned npok,const ullong   *idpd,const tdouble3 *posd,const tfloat3 *vel,const float *rhop, const tsymatrix3f *sigma, bool externalpointer=true){  AddPartData(npok,NULL,idpd,NULL,posd,vel,rhop,sigma,externalpointer);  }
   void AddPartDataSplitting(unsigned npok,const float *mass,const float *hvar,bool externalpointer=true);
 
   void AddPartData(const std::string &name,unsigned npok,const float    *v,bool externalpointer=true){  AddPartDataVar(name,JBinaryDataDef::DatFloat  ,npok,(const void *)v,externalpointer);  }
@@ -144,6 +154,7 @@ class JPartDataBi4 : protected JObject
 
   void AddPartData(const std::string &name,unsigned npok,const tfloat3  *v,bool externalpointer=true){  AddPartDataVar(name,JBinaryDataDef::DatFloat3 ,npok,(const void *)v,externalpointer);  }
   void AddPartData(const std::string &name,unsigned npok,const tdouble3 *v,bool externalpointer=true){  AddPartDataVar(name,JBinaryDataDef::DatDouble3,npok,(const void *)v,externalpointer);  }
+  void AddPartData(const std::string &name, unsigned npok, const tsymatrix3f *v, bool externalpointer = true) { AddPartDataVar(name, JBinaryDataDef::DatSyMatrix3f, npok, (const void *)v, externalpointer); }
   void AddPartData(const std::string &name,unsigned npok,const tint3    *v,bool externalpointer=true){  AddPartDataVar(name,JBinaryDataDef::DatInt3   ,npok,(const void *)v,externalpointer);  }
   void AddPartData(const std::string &name,unsigned npok,const tuint3   *v,bool externalpointer=true){  AddPartDataVar(name,JBinaryDataDef::DatUint3  ,npok,(const void *)v,externalpointer);  }
 

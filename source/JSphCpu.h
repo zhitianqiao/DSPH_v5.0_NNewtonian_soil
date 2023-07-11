@@ -47,10 +47,17 @@ typedef struct{
   tsymatrix3f *spsgradvel;
   tsymatrix3f *sigma;
   tsymatrix3f *delta_sigma;
+  tsymatrix3f *sigmaS;
+  tsymatrix3f *rstress;
+  float *pstress;
   //<vs_non-Newtonian_ini>
   float *visco_eta; 
   tsymatrix3f *d_tensor;
-  float *auxnn;          
+  float *auxnn;  
+  tfloat3 *epsilon1;
+  tfloat3 *epsilon2;
+  tfloat3 *cigma1;
+  tfloat3 *cigma2;
   //<vs_non-Newtonian_end>
 }stinterparmsc;
 
@@ -61,8 +68,10 @@ inline stinterparmsc StInterparmsc(unsigned np,unsigned npb,unsigned npbok
   ,const float *press
   ,float* ar,tfloat3 *ace,float *delta
   ,TpShifting shiftmode,tfloat4 *shiftposfs
-  ,tsymatrix3f *spstau,tsymatrix3f *spsgradvel, tsymatrix3f *sigma, tsymatrix3f *delta_sigma
+  ,tsymatrix3f *spstau,tsymatrix3f *spsgradvel, tsymatrix3f *sigma, tsymatrix3f *delta_sigma, tsymatrix3f *sigmaS, tsymatrix3f *rstress, float *pstress
   ,float* visco_eta,tsymatrix3f *d_tensor,float *auxnn  //<vs_non-Newtonian>
+  ,tfloat3 *epsilon1,tfloat3 *epsilon2
+  ,tfloat3 *cigma1,tfloat3 *cigma2
 )
 {
   stinterparmsc d={np,npb,npbok,(np-npb)
@@ -71,8 +80,10 @@ inline stinterparmsc StInterparmsc(unsigned np,unsigned npb,unsigned npbok
     ,press
     ,ar,ace,delta
     ,shiftmode,shiftposfs
-    ,spstau,spsgradvel,sigma,delta_sigma
+    ,spstau,spsgradvel,sigma,delta_sigma,sigmaS,rstress,pstress
     ,visco_eta,d_tensor,auxnn  //<vs_non-Newtonian>
+	,epsilon1,epsilon2
+	,cigma1,cigma2
   };
   return(d);
 }
@@ -134,6 +145,7 @@ protected:
   tfloat4 *Velrhopc;
 
   tsymatrix3f *Sigmac;   ///stress calculated by soil constitutive
+  tsymatrix3f *SigmaSc;
 
   tfloat3 *BoundNormalc;  ///<Normal (x,y,z) pointing from boundary particles to ghost nodes.
   tfloat3 *MotionVelc;    ///<Velocity of a moving boundary particle.
@@ -141,10 +153,12 @@ protected:
   //-Variables for compute step: VERLET. | Vars. para compute step: VERLET.
   tfloat4 *VelrhopM1c;  ///<Verlet: in order to keep previous values. | Verlet: para guardar valores anteriores.
   tsymatrix3f *SigmaM1c;   ///stress calculated by soil constitutive
+  tsymatrix3f *SigmaSM1c;
 
   //-Variables for compute step: SYMPLECTIC. | Vars. para compute step: SYMPLECTIC.
   tdouble3 *PosPrec;    ///<Sympletic: in order to keep previous values. | Sympletic: para guardar valores en predictor.
   tfloat4 *VelrhopPrec;
+  tsymatrix3f *SigmaPrec;
 
   //-Variables for floating bodies.
   unsigned *FtRidp;             ///<Identifier to access to the particles of the floating object [CaseNfloat].
@@ -170,6 +184,8 @@ protected:
   //-Variables for Laminar+SPS viscosity.  
   tsymatrix3f *SpsTauc;       ///<SPS sub-particle stress tensor.
   tsymatrix3f *SpsGradvelc;   ///<Velocity gradients.
+  tsymatrix3f *Rstressc;     //artificial stress tensor.
+  float *Pstressc;     //artificial pressure
 
   TimersCpu Timers;
 
@@ -378,13 +394,20 @@ protected:
   float *Visco_etac;       ///<Effective viscosity.  
   tsymatrix3f *D_tensorc;  ///<Deformation tensor. 
   float *AuxNN;            ///<Auxilary. 
+  tfloat3 *Epsilon1;
+  tfloat3 *Epsilon2;  //output strain
+  tfloat3 *Cigma1;
+  tfloat3 *Cigma2;    //output stress
   //tsymatrix3f *Sigmac;  ///<stress tensor.
 
-  /*unsigned GetParticlesData(unsigned n, unsigned pini, bool onlynormal
+  /*unsigned GetParticlesData(unsigned n,unsigned pini,bool onlynormal
+    ,unsigned *idp,tdouble3 *pos,tfloat3 *vel,float *rhop,typecode *code,float *aux_n);*/
+  unsigned GetParticlesData(unsigned n, unsigned pini, bool onlynormal
+	  , unsigned * idp, tdouble3 * pos, tfloat3 * vel, float * rhop, typecode * code, float * aux_n, tfloat3 * eps1, tfloat3 * eps2, tfloat3 *cig1, tfloat3 *cig2);//xinjia
+ /* unsigned GetParticlesData(unsigned n, unsigned pini, bool onlynormal
 	  , unsigned *idp, tdouble3 *pos, tfloat3 *vel, float *rhop, typecode *code, float *aux_n);*/
-  unsigned GetParticlesData(unsigned n,unsigned pini,bool onlynormal
-    ,unsigned *idp,tdouble3 *pos,tfloat3 *vel,float *rhop,typecode *code,float *aux_n);
-
+  //unsigned GetParticlesData(unsigned n, unsigned pini, bool onlynormal
+	 // , unsigned *idp, tdouble3 *pos, tfloat3 *vel, float *rhop, typecode *code, tsymatrix3f *sigma);
   //<vs_non-Newtonian> pressure
   void ComputePress_NN(unsigned np,unsigned npb);
   //functions for tensors
@@ -393,7 +416,7 @@ protected:
   void GetStrainRateTensor(const tmatrix3f &dvelp1,float div_vel
     ,float &I_D,float &II_D,float &J1_D,float &J2_D,float &div_D_tensor
     ,float &D_tensor_magn,tmatrix3f &D_tensor)const;
-  void GetEta_Effective(int p1, const typecode ppx, float tau_yield, float MC_fai, float Cohes, const float pressp1, float D_tensor_magn
+  void GetEta_Effective(int p1, const typecode ppx, float tau_yield, float DP_phi, float DP_cohes, const float pressp1, float D_tensor_magn
 	  , float visco, float m_NN, float n_NN, float &visco_etap1)const;
   void GetStressTensor(const tmatrix3f &D_tensor,float visco_etap1
     ,float &I_t,float &II_t,float &J1_t,float &J2_t,float &tau_tensor_magn,tmatrix3f &tau_tensor)const;
@@ -405,11 +428,25 @@ protected:
   void GetStrainRateTensor_tsym(const tsymatrix3f &dvelp1
     ,float &I_D,float &II_D,float &J1_D,float &J2_D,float &div_D_tensor
     ,float &D_tensor_magn,tsymatrix3f &D_tensor)const;
+  void GetStrainRateTensor_tsym_Soil(const tsymatrix3f &dvelp1
+	  , float &I_D, float &II_D, float &J1_D, float &J2_D, float &div_D_tensor
+	  , float &D_tensor_magn, tsymatrix3f &D_tensor)const;
   void GetStressTensor_sym(const tsymatrix3f &D_tensorp1,float visco_etap1
     ,float &I_t,float &II_t,float &J1_t,float &J2_t,float &tau_tensor_magn,tsymatrix3f &tau_tensorp1)const;
-  void GetDeltaSigma_sym(const tsymatrix3f &D_tensorp1, float E, float mu, float &div3_D_tensorp1
-	  , float &I_t, float &II_t, float &J1_t, float &J2_t, float &delta_sigma_tensor_magn, tsymatrix3f &delta_sigma_tensorp1)const;  //EPmodel
-
+  //caculate elastic stress
+  void GetStressTensor_sym_Elastic(const tsymatrix3f & D_tensorp1, float E, float mu, float & I_t, float & II_t, float & J1_t, float & J2_t, float & tau_tensor_magn, tsymatrix3f & tau_tensorp1) const;
+  //add elastic matrix into delta_sigma
+  void GetDeltaSigma_elastic(const tsymatrix3f & D_tensorp1, tsymatrix3f & sigma_tensorp1, float E, float mu, float & I_t, float & II_t, float & J1_t, float & J2_t, float & delta_sigma_tensor_magn, tsymatrix3f & delta_sigma_tensorp1) const;
+  //calculate deviatoric stress tensor and Invariant (I_1, J_2)
+  void GetSigmaInvariant_sym(tsymatrix3f & sigma_tensorp1, float & I_1, float & J_2, tsymatrix3f & sigmaS_tensorp1) const;
+  //compute yield function f(I1,J2)=sqrt(J2)+alpha_phi*I1-kc;
+  void GetYieldDruckerPrager(tsymatrix3f & sigma_tensorp1, const float & alpha_phi, const float & kc, float & yield_value) const;
+  //correction of  stress tensor when it yields
+  void ModifyStressOfDruckerPrager(float & I_1, float & J_2, const float & alpha_phi, const float & kc, tsymatrix3f & sigma_tensorp1, tsymatrix3f & tau_tensorp1,float yield_value) const;
+  //calculate delta_sigma
+  void GetDeltaSigma_sym(const tsymatrix3f &D_tensorp1, float E, float mu, float DP_phi, float DP_cohes, const float &div3_D_tensorp1
+	  , float &I_t, float &II_t, float &J1_t, float &J2_t, float &delta_sigma_tensor_magn, tsymatrix3f &delta_sigma_tensorp1, const tsymatrix3f &sigma_tensorp1)const;  //EPmodel
+  
   //BCs
   template<TpKernel tker,TpFtMode ftmode> void InteractionForcesBound_NN_FDA
   (unsigned n,unsigned pini,StDivDataCpu divdata,const unsigned *dcell
@@ -427,6 +464,21 @@ protected:
     ,float *visco_eta,const tsymatrix3f* tau,float *auxnn
     ,const tdouble3 *pos,const tfloat4 *velrhop,const typecode *code,const unsigned *idp
     ,tfloat3 *ace)const;
+  //-Soil
+  template<TpKernel tker, TpFtMode ftmode, TpVisco tvisco, TpDensity tdensity, bool shift>
+  void InteractionForcesFluid_NN_SPH_ConsEq_Soil(unsigned n, unsigned pini, bool boundp2, float visco
+	  , StDivDataCpu divdata, const unsigned *dcell
+	  , float *visco_eta, const tsymatrix3f* tau, float *auxnn
+	  , const tdouble3 *pos, const tfloat4 *velrhop, const typecode *code, const unsigned *idp
+	  , tfloat3 *ace)const;
+
+  //solve tensile instability
+  template<TpKernel tker, TpFtMode ftmode, TpVisco tvisco, TpAcceleration tacceleration, bool shift>
+  void InteractionForcesFluid_NN_Tensile_instability(unsigned n, unsigned pini, bool boundp2, float visco
+	  , StDivDataCpu divdata, const unsigned *dcell
+	  , float *visco_eta, const tsymatrix3f* tau, float *auxnn, const tsymatrix3f* rstress,const float *pstress
+	  , const tdouble3 *pos, const tfloat4 *velrhop, const typecode *code, const unsigned *idp
+	  , tfloat3 *ace)const;
 
   template<TpKernel tker,TpFtMode ftmode,TpVisco tvisco,TpDensity tdensity,bool shift>
   void InteractionForcesFluid_NN_SPH_Morris
@@ -436,14 +488,45 @@ protected:
     ,const tdouble3 *pos,const tfloat4 *velrhop,const typecode *code,const unsigned *idp
     ,tfloat3 *ace)const;
 
+  template<TpKernel tker, TpFtMode ftmode, TpVisco tvisco, TpDensity tdensity, bool shift>
+  void InteractionForcesFluid_NN_EPmodel_Morris
+  (unsigned n, unsigned pini, bool boundp2, float visco
+	  , StDivDataCpu divdata, const unsigned *dcell
+	  , float *visco_eta, const tsymatrix3f* tau, tsymatrix3f* gradvel, float *auxnn
+	  , const tdouble3 *pos, const tfloat4 *velrhop, const typecode *code, const unsigned *idp
+	  , tfloat3 *ace)const;
+
   template<TpFtMode ftmode,TpVisco tvisco> void InteractionForcesFluid_NN_SPH_Visco_Stress_tensor
   (unsigned n,unsigned pinit,float visco,float *visco_eta
-    ,tsymatrix3f* tau,const tsymatrix3f* D_tensor,float *auxnn
+    ,tsymatrix3f* tau,const tsymatrix3f* D_tensor,float *auxnn, tfloat3 *cigma1, tfloat3 *cigma2
     ,const tdouble3 *pos, const typecode *code,const unsigned *idp)const;
+  
+  //elastic stress tensor
+  template<TpFtMode ftmode, TpVisco tvisco> void InteractionForcesFluid_NN_SPH_Elastic_Stress_tensor
+  (unsigned n, unsigned pinit, float visco, float * visco_eta
+	  , tsymatrix3f * tau, const tsymatrix3f * D_tensor, float * auxnn, tfloat3 *cigma1, tfloat3 *cigma2
+	  , const tdouble3 * pos, const typecode * code, const unsigned * idp) const;
+
+  //elastic-plastic stress tensor
+  template<TpFtMode ftmode, TpVisco tvisco> void InteractionForcesFluid_NN_EPmodel_Stress_tensor
+  (unsigned n, unsigned pinit, float visco, float * visco_eta, tsymatrix3f * sigma, tsymatrix3f *sigmaS
+	  , tsymatrix3f * tau, const tsymatrix3f * D_tensor, float * auxnn, tfloat3 *cigma1, tfloat3 *cigma2
+	  , const tdouble3 * pos, const typecode * code, const unsigned * idp) const;
+
+  //compute artificial stress tensor
+  template<TpFtMode ftmode, TpVisco tvisco> void InteractionForcesFluid_NN_Artificial_Stress_tensor
+  (unsigned n, unsigned pinit, float visco, float * visco_eta, tsymatrix3f * sigma, tsymatrix3f *sigmaS
+	  , tsymatrix3f * rstress, float *pstress, const tsymatrix3f * D_tensor, float * auxnn, tfloat3 *cigma1, tfloat3 *cigma2
+	  , const tfloat4 *velrhop, const tdouble3 * pos, const typecode * code, const unsigned * idp) const;
+
+  template<TpFtMode ftmode, TpVisco tvisco> void InteractionForcesFluid_NN_DruckerPrager
+  (unsigned n, unsigned pinit, float visco, float * visco_eta, tsymatrix3f * sigma, tsymatrix3f *sigmaS
+	  , tsymatrix3f * tau, const tsymatrix3f * D_tensor, float * auxnn, tfloat3 *cigma1, tfloat3 *cigma2
+	  , const tdouble3 * pos, const typecode * code, const unsigned * idp) const;
 
   template<TpFtMode ftmode,TpVisco tvisco> void InteractionForcesFluid_NN_SPH_Visco_eta
   (unsigned n,unsigned pinit,float visco,float *visco_eta,const tfloat4 *velrhop
-    ,const tsymatrix3f* gradvel,tsymatrix3f* D_tensor,float *auxnn,float &viscetadt
+    ,const tsymatrix3f* gradvel,tsymatrix3f* D_tensor,float *auxnn,float &viscetadt, tfloat3 *epsilon1, tfloat3 *epsilon2
     ,const tdouble3 *pos, const float *press,const typecode *code,const unsigned *idp)const;
 
   template<TpKernel tker,TpFtMode ftmode,TpVisco tvisco,TpDensity tdensity,bool shift>
@@ -472,22 +555,26 @@ protected:
   template<TpKernel tker,TpFtMode ftmode,TpVisco tvisco,TpDensity tdensity,bool shift>
   void Interaction_ForcesCpuT_NN_SPH(const stinterparmsc &t,StInterResultc &res)const;
 
-  //elastic plastic model
+  //elastic constitutive
   template<TpKernel tker, TpFtMode ftmode, TpVisco tvisco, TpDensity tdensity, bool shift>
+  void Interaction_ForcesCpuT_NN_Elastic(const stinterparmsc & t, StInterResultc & res) const;
+
+  //elastic plastic model
+  template<TpKernel tker, TpFtMode ftmode, TpVisco tvisco, TpDensity tdensity, TpAcceleration tacceleration, bool shift>
   void Interaction_ForcesCpuT_NN_EPmodel(const stinterparmsc &t, StInterResultc &res)const;
 
   template<TpKernel tker, TpFtMode ftmode, TpVisco tvisco, TpDensity tdensity, bool shift>
-  void InteractionForcesFluid_NN_EPmodel_PressGrad
+  void InteractionForcesFluid_NN_EPmodel_VelGrad
   (unsigned n, unsigned pini, bool boundp2, float visco
 	  , StDivDataCpu divdata, const unsigned *dcell
-	  , tsymatrix3f* gradvel, tsymatrix3f* sigma, tsymatrix3f* delta_sigma, tsymatrix3f* D_tensor
+	  , tsymatrix3f* gradvel, tsymatrix3f* sigma, tsymatrix3f* D_tensor, tsymatrix3f* rstress
 	  , const tdouble3 *pos, const tfloat4 *velrhop, const typecode *code, const unsigned *idp
 	  , const float *press
 	  , float &viscdt, float *ar, tfloat3 *ace, float *delta
 	  , TpShifting shiftmode, tfloat4 *shiftposfs)const;
-
+  //elastic
   template<TpKernel tker, TpFtMode ftmode, TpVisco tvisco, TpDensity tdensity, bool shift>
-  void InteractionForcesFluid_NN_EPmodel_VelGrad
+  void InteractionForcesFluid_NN_Elastic_VelGrad
   (unsigned n, unsigned pini, bool boundp2, float visco
 	  , StDivDataCpu divdata, const unsigned *dcell
 	  , tsymatrix3f* gradvel, tsymatrix3f* sigma, tsymatrix3f* D_tensor
@@ -496,16 +583,11 @@ protected:
 	  , float &viscdt, float *ar, tfloat3 *ace, float *delta
 	  , TpShifting shiftmode, tfloat4 *shiftposfs)const;
 
-  template<TpFtMode ftmode, TpVisco tvisco> void InteractionForcesFluid_NN_EPmodel_Visco_eta
+  //elastic and elastic-plastic
+  template<TpFtMode ftmode, TpVisco tvisco> void InteractionForcesFluid_NN_EP_Elastic_Visco_eta
   (unsigned n, unsigned pinit, float visco, float *visco_eta, const tfloat4 *velrhop
-	  , const tsymatrix3f* gradvel, tsymatrix3f* D_tensor, float *auxnn, float &viscetadt
+	  , const tsymatrix3f* gradvel, tsymatrix3f* D_tensor, float *auxnn, float &viscetadt, tfloat3 *epsilon1, tfloat3 *epsilon2
 	  , const tdouble3 *pos, const float *press, const typecode *code, const unsigned *idp)const;
-
-  template<TpFtMode ftmode, TpVisco tvisco> void InteractionForcesFluid_NN_EPmodel_Visco_Stress_tensor
-  (unsigned n, unsigned pinit, float visco, float *visco_eta
-	  , tsymatrix3f* tau, tsymatrix3f* delta_sigma, const tsymatrix3f* D_tensor, float *auxnn
-	  , const tdouble3 *pos, const typecode *code, const unsigned *idp)const;
-
   //<vs_non-Newtonian_end>
   
 };

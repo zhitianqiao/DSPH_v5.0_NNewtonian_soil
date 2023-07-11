@@ -165,13 +165,13 @@ int main(int argc, char** argv){
       log->Print(license,JLog2::Out_File);
       log->Print(appname,JLog2::Out_File);
       log->Print(appnamesub,JLog2::Out_File);
-	  //cfg.Cpu = false;
-	  //cfg.Gpu = true;
-	  //cfg.GpuFree = true;
-	  //cfg.GpuId = 0;
+	  cfg.Cpu = false;
+	  cfg.Gpu = true;
+	  cfg.GpuFree = true;
+	  cfg.GpuId = 0;
 	  //-SPH Execution.
       #ifndef _WITHGPU
-        cfg.Cpu=true;
+	    cfg.Cpu = true;
       #endif
       if(cfg.Cpu){
         JSphCpuSingle sph;

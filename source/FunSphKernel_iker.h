@@ -89,8 +89,8 @@ __device__ float GetKernelCubic_Tensil(float rr2
   const float wab=GetKernelCubic_Wab(rr2);
   float fab=wab*CTE.cubic_odwdeltap;
   fab*=fab; fab*=fab; //fab=fab^4
-  const float tensilp1=(pressp1/(rhopp1*rhopp1))*(pressp1>0? 0.01f: -0.2f);
-  const float tensilp2=(pressp2/(rhopp2*rhopp2))*(pressp2>0? 0.01f: -0.2f);
+  const float tensilp1=(pressp1/(rhopp1*rhopp1))*(pressp1>0? 0.01f: -0.4f);
+  const float tensilp2=(pressp2/(rhopp2*rhopp2))*(pressp2>0? 0.01f: -0.4f);
   return(fab*(tensilp1+tensilp2));
 }
 #endif

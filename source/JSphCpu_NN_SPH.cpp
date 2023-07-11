@@ -127,7 +127,7 @@ template<TpKernel tker,TpFtMode ftmode> void JSphCpu::InteractionForcesBound_NN_
 //==============================================================================
 template<TpFtMode ftmode,TpVisco tvisco> void JSphCpu::InteractionForcesFluid_NN_SPH_Visco_Stress_tensor
 (unsigned n,unsigned pinit,float visco,float *visco_eta
-  ,tsymatrix3f *tau,const tsymatrix3f *D_tensor,float *auxnn
+  ,tsymatrix3f *tau,const tsymatrix3f *D_tensor,float *auxnn, tfloat3 *cigma1, tfloat3 *cigma2
   ,const tdouble3 *pos,const typecode *code,const unsigned *idp)const
 {
   //-Initialise execution with OpenMP. | Inicia ejecucion con OpenMP.
@@ -151,18 +151,75 @@ template<TpFtMode ftmode,TpVisco tvisco> void JSphCpu::InteractionForcesFluid_NN
     float I_t,II_t=0.f; float J1_t,J2_t=0.f;
     GetStressTensor_sym(D_tensorp1,visco_etap1,I_t,II_t,J1_t,J2_t,tau_tensor_magn,tau_tensorp1);
 
-    //debug uncomment if you want an output of effective viscosity
-    if(tau_tensor_magn){
-      auxnn[p1] = visco_etap1; // D_tensor_magn;
-    }
-
     ////-Sum results together. | Almacena resultados.
     if(tvisco!=VISCO_Artificial) {
       tau[p1].xx=tau_tensorp1.xx; tau[p1].xy=tau_tensorp1.xy; tau[p1].xz=tau_tensorp1.xz;
       tau[p1].yy=tau_tensorp1.yy; tau[p1].yz=tau_tensorp1.yz;
       tau[p1].zz=tau_tensorp1.zz;
     }
+
+	//debug uncomment if you want an output of effective viscosity
+	if (tau_tensor_magn) {
+		//auxnn[p1] = visco_etap1; // D_tensor_magn;
+		cigma1[p1].x = tau_tensorp1.xx;
+		cigma1[p1].y = tau_tensorp1.yy;
+		cigma1[p1].z = tau_tensorp1.zz;
+		cigma2[p1].x = tau_tensorp1.xy;
+		cigma2[p1].y = tau_tensorp1.xz;
+		cigma2[p1].z = tau_tensorp1.yz;
+	}
   }
+}
+
+//==============================================================================
+ /// Perform calculations for NN using the SPH approach: Calculates the Elastic Stress tensor
+ //==============================================================================
+template<TpFtMode ftmode, TpVisco tvisco> void JSphCpu::InteractionForcesFluid_NN_SPH_Elastic_Stress_tensor
+(unsigned n, unsigned pinit, float visco, float *visco_eta
+	, tsymatrix3f *tau, const tsymatrix3f *D_tensor, float *auxnn, tfloat3 *cigma1, tfloat3 *cigma2
+	, const tdouble3 *pos, const typecode *code, const unsigned *idp)const
+{
+	//-Initialise execution with OpenMP. | Inicia ejecucion con OpenMP.
+	const int pfin = int(pinit + n);
+#ifdef OMP_USE
+#pragma omp parallel for schedule (guided)
+#endif
+	for (int p1 = int(pinit); p1<pfin; p1++) {
+
+		//-Obtain data of particle p1.
+		const tdouble3 posp1 = pos[p1];
+
+		//stress related to p1
+		const float visco_etap1 = visco_eta[p1];
+		const tsymatrix3f D_tensorp1 = D_tensor[p1];
+		const bool rsymp1 = (Symmetry && posp1.y <= KernelSize); //<vs_syymmetry>
+		const typecode pp1 = CODE_GetTypeValue(code[p1]);
+
+		//setup stress related variables
+		tsymatrix3f tau_tensorp1 = { 0,0,0,0,0,0 }; float tau_tensor_magn = 0.f;
+		float E = PhaseCte[pp1].E; float mu = PhaseCte[pp1].mu;
+		float I_t, II_t = 0.f; float J1_t, J2_t = 0.f;
+		GetStressTensor_sym_Elastic(D_tensorp1, E, mu, I_t, II_t, J1_t, J2_t, tau_tensor_magn, tau_tensorp1);
+
+		////-Sum results together. | Almacena resultados.
+		if (tvisco != VISCO_Artificial) {
+			tau[p1].xx = tau_tensorp1.xx; tau[p1].xy = tau_tensorp1.xy; tau[p1].xz = tau_tensorp1.xz;
+			tau[p1].yy = tau_tensorp1.yy; tau[p1].yz = tau_tensorp1.yz;
+			tau[p1].zz = tau_tensorp1.zz;
+		}
+
+		//debug uncomment if you want an output of effective viscosity
+		if (tau_tensor_magn) {
+			//auxnn[p1] = visco_etap1; // D_tensor_magn;
+			cigma1[p1].x = tau_tensorp1.xx;
+			cigma1[p1].y = tau_tensorp1.yy;
+			cigma1[p1].z = tau_tensorp1.zz;
+			cigma2[p1].x = tau_tensorp1.xy;
+			cigma2[p1].y = tau_tensorp1.xz;
+			cigma2[p1].z = tau_tensorp1.yz;
+
+		}
+	}
 }
 
 //==============================================================================
@@ -170,7 +227,7 @@ template<TpFtMode ftmode,TpVisco tvisco> void JSphCpu::InteractionForcesFluid_NN
 //==============================================================================
 template<TpFtMode ftmode,TpVisco tvisco> void JSphCpu::InteractionForcesFluid_NN_SPH_Visco_eta
 (unsigned n,unsigned pinit,float visco,float *visco_eta,const tfloat4 *velrhop
-  ,const tsymatrix3f* gradvel,tsymatrix3f* D_tensor,float *auxnn,float &viscetadt
+  ,const tsymatrix3f* gradvel,tsymatrix3f* D_tensor,float *auxnn,float &viscetadt, tfloat3 *epsilon1, tfloat3 *epsilon2 //xinjia
   ,const tdouble3 *pos, const float *press, const typecode *code,const unsigned *idp)const
 {
   //-Initialize viscth to calculate viscdt maximo con OpenMP. | Inicializa viscth para calcular visdt maximo con OpenMP.
@@ -202,8 +259,8 @@ template<TpFtMode ftmode,TpVisco tvisco> void JSphCpu::InteractionForcesFluid_NN
     //float m_NN=PhaseCte[pp1].m_NN; float n_NN=PhaseCte[pp1].n_NN; float tau_yield=PhaseCte[pp1].tau_yield; float visco_NN=PhaseCte[pp1].visco;
     //GetEta_Effective(pp1,tau_yield,D_tensor_magn,visco_NN,m_NN,n_NN,visco_etap1);
 	const float pressp1 = press[p1];
-	float m_NN = PhaseCte[pp1].m_NN; float n_NN = PhaseCte[pp1].n_NN; float tau_yield = PhaseCte[pp1].tau_yield; float MC_phi = PhaseCte[pp1].MC_phi; float Cohes = PhaseCte[pp1].Cohes; float visco_NN = PhaseCte[pp1].visco;
-	GetEta_Effective(p1,pp1,tau_yield, MC_phi, Cohes, pressp1, D_tensor_magn,visco_NN,m_NN,n_NN,visco_etap1);
+	float m_NN = PhaseCte[pp1].m_NN; float n_NN = PhaseCte[pp1].n_NN; float tau_yield = PhaseCte[pp1].tau_yield; float  DP_phi = PhaseCte[pp1].DP_phi; float DP_cohes = PhaseCte[pp1].DP_cohes; float visco_NN = PhaseCte[pp1].visco;
+	GetEta_Effective(p1,pp1,tau_yield, DP_phi, DP_cohes, pressp1, D_tensor_magn,visco_NN,m_NN,n_NN,visco_etap1);
 
     //-Sum results together. | Almacena resultados.
     if(visco_etap1) {
@@ -217,6 +274,12 @@ template<TpFtMode ftmode,TpVisco tvisco> void JSphCpu::InteractionForcesFluid_NN
     //debug
     if(D_tensor_magn){
       auxnn[p1] = visco_etap1; // d_tensor_magn;
+	  epsilon1[p1].x = D_tensorp1.xx;
+	  epsilon1[p1].y = D_tensorp1.yy;
+	  epsilon1[p1].z = D_tensorp1.zz;
+	  epsilon2[p1].x = D_tensorp1.xy; 
+	  epsilon2[p1].y = D_tensorp1.xz;
+	  epsilon2[p1].z = D_tensorp1.yz;
     } 
     const int th=omp_get_thread_num();
     if(visco_etap1>viscetath[th*OMP_STRIDE])viscetath[th*OMP_STRIDE]=visco_etap1;
@@ -414,7 +477,7 @@ void JSphCpu::InteractionForcesFluid_NN_SPH_Morris(unsigned n,unsigned pinit,boo
             const float dot_rr2=dot/(rr2+Eta2);
             visc=max(dot_rr2,visc);
             const float visco_NN=PhaseCte[pp2].visco;
-            if(tvisco==VISCO_Artificial) {//-Artificial viscosity.
+            if(tvisco== VISCO_Artificial) {//-Artificial viscosity.
               if(dot<0) {
                 const float amubar=KernelH*dot_rr2;  //amubar=CTE.h*dot/(rr2+CTE.eta2);
                 const float robar=(rhopp1+velrhop2.w)*0.5f;
@@ -674,7 +737,7 @@ void JSphCpu::Interaction_ForcesCpuT_NN_SPH(const stinterparmsc &t,StInterResult
     if(tvisco!=VISCO_Artificial) {
       //Build strain rate tensor and compute eta_visco //what will happen here for boundary particles?
       InteractionForcesFluid_NN_SPH_Visco_eta<ftmode,tvisco>(t.npf,t.npb,Visco
-        ,t.visco_eta,t.velrhop,t.spsgradvel,t.d_tensor,t.auxnn,viscetadt,t.pos, t.press, t.code,t.idp);
+        ,t.visco_eta,t.velrhop,t.spsgradvel,t.d_tensor,t.auxnn,viscetadt,t.epsilon1, t.epsilon2, t.pos, t.press, t.code,t.idp);
     }
 
     if(tvisco!=VISCO_ConstEq) {
@@ -689,7 +752,9 @@ void JSphCpu::Interaction_ForcesCpuT_NN_SPH(const stinterparmsc &t,StInterResult
       //-ConsEq;
       // Build strain rate tensor and compute eta_visco //what will happen here for boundary particles?
       InteractionForcesFluid_NN_SPH_Visco_Stress_tensor<ftmode,tvisco>(t.npf,t.npb,Visco
-        ,t.visco_eta,t.spstau,t.d_tensor,t.auxnn,t.pos,t.code,t.idp);
+        ,t.visco_eta,t.spstau,t.d_tensor,t.auxnn,t.cigma1,t.cigma2,t.pos,t.code,t.idp);
+	  /*InteractionForcesFluid_NN_SPH_Elastic_Stress_tensor<ftmode, tvisco>(t.npf, t.npb, Visco
+		  , t.visco_eta, t.spstau, t.d_tensor, t.auxnn, t.pos, t.code, t.idp);*/
       //-Compute viscous terms and add them to the acceleration       
       InteractionForcesFluid_NN_SPH_ConsEq<tker,ftmode,tvisco,tdensity,shift>(t.npf,t.npb,false,Visco
         ,t.divdata,t.dcell,t.visco_eta,t.spstau,t.auxnn,t.pos,t.velrhop,t.code,t.idp,t.ace);
@@ -713,14 +778,353 @@ void JSphCpu::Interaction_ForcesCpuT_NN_SPH(const stinterparmsc &t,StInterResult
 
 //end_of_file
 
-//start of Elastic Plastic model
+
+// start if elastic constitutive
 
 //==============================================================================
-/// Perform calculations for NN using the SPH approach: Calculates the Stress tensor (delta_sigma)
+/// Perform interaction between particles for the SPH approcach using the Const. Eq.: Fluid/Float-Fluid/Float or Fluid/Float-Bound 
 //==============================================================================
-template<TpFtMode ftmode, TpVisco tvisco> void JSphCpu::InteractionForcesFluid_NN_EPmodel_Visco_Stress_tensor
-(unsigned n, unsigned pinit, float visco, float *visco_eta
-	, tsymatrix3f *tau, tsymatrix3f *delta_sigma, const tsymatrix3f *D_tensor, float *auxnn
+template<TpKernel tker, TpFtMode ftmode, TpVisco tvisco, TpDensity tdensity, bool shift>
+void JSphCpu::InteractionForcesFluid_NN_SPH_ConsEq_Soil(unsigned n, unsigned pinit, bool boundp2, float visco
+	, StDivDataCpu divdata, const unsigned *dcell
+	, float *visco_eta, const tsymatrix3f* tau, float *auxnn
+	, const tdouble3 *pos, const tfloat4 *velrhop, const typecode *code, const unsigned *idp
+	, tfloat3 *ace)const
+{
+	//-Initialise execution with OpenMP. | Inicia ejecucion con OpenMP.
+	const int pfin = int(pinit + n);
+#ifdef OMP_USE
+#pragma omp parallel for schedule (guided)
+#endif
+	for (int p1 = int(pinit); p1<pfin; p1++) {
+		tfloat3 acep1 = TFloat3(0);
+		float visc = 0;
+		//-Obtain data of particle p1 in case of floating objects. | Obtiene datos de particula p1 en caso de existir floatings.
+		bool ftp1 = false;     //-Indicate if it is floating. | Indica si es floating.
+		if (USE_FLOATING) {
+			ftp1 = CODE_IsFloating(code[p1]);
+		}
+
+		//-Obtain data of particle p1.
+		const tdouble3 posp1 = pos[p1];
+		const tfloat3 velp1 = TFloat3(velrhop[p1].x, velrhop[p1].y, velrhop[p1].z);
+		const float rhopp1 = velrhop[p1].w;
+		const float visco_etap1 = visco_eta[p1]; //<vs_non-Newtonian>
+		const tsymatrix3f tau_tensorp1 = tau[p1];
+		const typecode pp1 = (CODE_GetTypeValue(code[p1])); //<vs_non-Newtonian>
+		const bool rsymp1 = (Symmetry && posp1.y <= KernelSize); //<vs_syymmetry>
+
+																 //-Search for neighbours in adjacent cells.
+		const StNgSearch ngs = nsearch::Init(dcell[p1], boundp2, divdata);
+		for (int z = ngs.zini; z<ngs.zfin; z++)for (int y = ngs.yini; y<ngs.yfin; y++) {
+			const tuint2 pif = nsearch::ParticleRange(y, z, ngs, divdata);
+
+			//-Interaction of Fluid with type Fluid or Bound. | Interaccion de Fluid con varias Fluid o Bound.
+			//------------------------------------------------------------------------------------------------
+			bool rsym = false; //<vs_syymmetry>
+			for (unsigned p2 = pif.x; p2<pif.y; p2++) {
+				const float drx = float(posp1.x - pos[p2].x);
+				float dry = float(posp1.y - pos[p2].y);
+				if (rsym)   dry = float(posp1.y + pos[p2].y); //<vs_syymmetry>
+				const float drz = float(posp1.z - pos[p2].z);
+				const float rr2 = drx*drx + dry*dry + drz*drz;
+				if (rr2 <= KernelSize2 && rr2 >= ALMOSTZERO) {
+					//-Computes kernel.
+					const float fac = fsph::GetKernel_Fac<tker>(CSP, rr2);
+					const float frx = fac*drx, fry = fac*dry, frz = fac*drz; //-Gradients.
+
+																			 //===== Get mass of particle p2 ===== 
+																			 //<vs_non-Newtonian>
+					const typecode pp2 = (boundp2 ? pp1 : CODE_GetTypeValue(code[p2])); //<vs_non-Newtonian>
+					float massp2 = (boundp2 ? MassBound : PhaseArray[pp2].mass); //-Contiene masa de particula segun sea bound o fluid.
+																				 //Note if you masses are very different more than a ratio of 1.3 then: massp2 = (boundp2 ? PhaseArray[pp1].mass : PhaseArray[pp2].mass);
+
+																				 //Floating
+					bool ftp2 = false;    //-Indicate if it is floating | Indica si es floating.
+					bool compute = true;  //-Deactivate when using DEM and if it is of type float-float or float-bound | Se desactiva cuando se usa DEM y es float-float o float-bound.
+					if (USE_FLOATING) {
+						ftp2 = CODE_IsFloating(code[p2]);
+						if (ftp2)massp2 = FtObjs[CODE_GetTypeValue(code[p2])].massp;
+						compute = !(USE_FTEXTERNAL && ftp1 && (boundp2 || ftp2)); //-Deactivate when using DEM and if it is of type float-float or float-bound. | Se desactiva cuando se usa DEM y es float-float o float-bound.
+					}
+
+					tfloat4 velrhop2 = velrhop[p2];
+					if (rsym)velrhop2.y = -velrhop2.y; //<vs_syymmetry>
+
+													   //-velocity dvx.
+					const float dvx = velp1.x - velrhop2.x, dvy = velp1.y - velrhop2.y, dvz = velp1.z - velrhop2.z;
+					const float cbar = max(PhaseArray[pp2].Cs0, PhaseArray[pp2].Cs0);
+
+					//===== Viscosity ===== 
+					if (compute) {
+						const float dot = drx*dvx + dry*dvy + drz*dvz;
+						const float dot_rr2 = dot / (rr2 + Eta2);
+						visc = max(dot_rr2, visc);
+
+						tsymatrix3f tau_tensorp2 = tau[p2]; tsymatrix3f tau_sum = { 0,0,0,0,0,0 };
+						if (boundp2)tau_tensorp2 = tau_tensorp1;
+						tau_sum.xx = tau_tensorp1.xx + tau_tensorp2.xx;	tau_sum.xy = tau_tensorp1.xy + tau_tensorp2.xy;	tau_sum.xz = tau_tensorp1.xz + tau_tensorp2.xz;
+						tau_sum.yy = tau_tensorp1.yy + tau_tensorp2.yy;	tau_sum.yz = tau_tensorp1.yz + tau_tensorp2.yz;
+						tau_sum.zz = tau_tensorp1.zz + tau_tensorp2.zz;
+
+						float taux = (tau_sum.xx*frx + tau_sum.xy*fry + tau_sum.xz*frz) / (rhopp1 * velrhop2.w); // as per symetric tensor grad
+						float tauy = (tau_sum.xy*frx + tau_sum.yy*fry + tau_sum.yz*frz) / (rhopp1 * velrhop2.w);
+						float tauz = (tau_sum.xz*frx + tau_sum.yz*fry + tau_sum.zz*frz) / (rhopp1 * velrhop2.w);
+						//store stresses
+						acep1.x += taux*massp2; acep1.y += tauy*massp2; acep1.z += tauz*massp2;
+					}
+					//-SPS turbulence model.
+					//-SPS turbulence model is disabled in v5.0 NN version
+					rsym = (rsymp1 && !rsym && float(posp1.y - dry) <= KernelSize); //<vs_syymmetry>
+					if (rsym)p2--;																									//<vs_syymmetry>
+				}
+				else rsym = false;																								//<vs_syymmetry>		
+			}
+		}
+		//-Sum results together. | Almacena resultados.
+		if (acep1.x || acep1.y || acep1.z) {
+			ace[p1] = ace[p1] + acep1;
+		}
+	}
+}
+
+//==============================================================================
+/// calculate velocity gradient (syymmetry) and solve continuity equation
+//==============================================================================
+template<TpKernel tker, TpFtMode ftmode, TpVisco tvisco, TpDensity tdensity, bool shift>
+void JSphCpu::InteractionForcesFluid_NN_Elastic_VelGrad(unsigned n, unsigned pinit, bool boundp2, float visco
+	, StDivDataCpu divdata, const unsigned *dcell
+	, tsymatrix3f* gradvel, tsymatrix3f* sigma, tsymatrix3f* D_tensor
+	, const tdouble3 *pos, const tfloat4 *velrhop, const typecode *code, const unsigned *idp
+	, const float *press
+	, float &viscdt, float *ar, tfloat3 *ace, float *delta
+	, TpShifting shiftmode, tfloat4 *shiftposfs)const
+{
+	//-Initialize viscth to calculate viscdt maximo con OpenMP. | Inicializa viscth para calcular visdt maximo con OpenMP.
+	float viscth[OMP_MAXTHREADS*OMP_STRIDE];
+	for (int th = 0; th<OmpThreads; th++)viscth[th*OMP_STRIDE] = 0;
+	//-Initialise execution with OpenMP. | Inicia ejecucion con OpenMP.
+	const int pfin = int(pinit + n);
+#ifdef OMP_USE
+#pragma omp parallel for schedule (guided)
+#endif
+	for (int p1 = int(pinit); p1 < pfin; p1++) {
+		float visc = 0, arp1 = 0, deltap1 = 0;
+		//tfloat3 acep1 = TFloat3(0);
+		tsymatrix3f gradvelp1 = { 0,0,0,0,0,0 };
+		//-Variables for Shifting.
+		tfloat4 shiftposfsp1;
+		if (shift)shiftposfsp1 = shiftposfs[p1];
+
+		//-Obtain data of particle p1 in case of floating objects. | Obtiene datos de particula p1 en caso de existir floatings.
+		bool ftp1 = false;     //-Indicate if it is floating. | Indica si es floating.
+		if (USE_FLOATING) {
+			ftp1 = CODE_IsFloating(code[p1]);
+			if (ftp1 && tdensity != DDT_None)deltap1 = FLT_MAX; //-DDT is not applied to floating particles.
+			if (ftp1 && shift)shiftposfsp1.x = FLT_MAX;  //-For floating objects do not calculate shifting. | Para floatings no se calcula shifting.
+		}
+
+		//-Obtain data of particle p1.
+		const tdouble3 posp1 = pos[p1];
+		const tfloat3 velp1 = TFloat3(velrhop[p1].x, velrhop[p1].y, velrhop[p1].z);
+		const float rhopp1 = velrhop[p1].w;
+		//const float pressp1 = press[p1];
+		const bool rsymp1 = (Symmetry && posp1.y <= KernelSize); //<vs_syymmetry>                                 
+																 //<vs_non-Newtonian>
+		const typecode pp1 = CODE_GetTypeValue(code[p1]);
+
+		//-Search for neighbours in adjacent cells.
+		const StNgSearch ngs = nsearch::Init(dcell[p1], boundp2, divdata);
+		for (int z = ngs.zini; z < ngs.zfin; z++)for (int y = ngs.yini; y < ngs.yfin; y++) {
+			const tuint2 pif = nsearch::ParticleRange(y, z, ngs, divdata);
+
+			//-Interaction of Fluid with type Fluid or Bound. | Interaccion de Fluid con varias Fluid o Bound.
+			//------------------------------------------------------------------------------------------------
+			bool rsym = false; //<vs_syymmetry>
+			for (unsigned p2 = pif.x; p2 < pif.y; p2++) {
+				const float drx = float(posp1.x - pos[p2].x);
+				float dry = float(posp1.y - pos[p2].y);
+				if (rsym)    dry = float(posp1.y + pos[p2].y); //<vs_syymmetry>
+				const float drz = float(posp1.z - pos[p2].z);
+				const float rr2 = drx*drx + dry*dry + drz*drz;
+				if (rr2 <= KernelSize2 && rr2 >= ALMOSTZERO) {
+					//-Computes kernel.
+					const float fac = fsph::GetKernel_Fac<tker>(CSP, rr2);
+					const float frx = fac*drx, fry = fac*dry, frz = fac*drz; //-Gradients
+
+					//===== Get mass of particle p2 ===== 
+					 //<vs_non-Newtonian>
+					const typecode pp2 = (boundp2 ? pp1 : CODE_GetTypeValue(code[p2])); //<vs_non-Newtonian>
+					float massp2 = (boundp2 ? MassBound : PhaseArray[pp2].mass); //-Contiene masa de particula segun sea bound o fluid.
+					//Note if you masses are very different more than a ratio of 1.3 then: massp2 = (boundp2 ? PhaseArray[pp1].mass : PhaseArray[pp2].mass);
+
+					//Floating                      
+					bool ftp2 = false;    //-Indicate if it is floating | Indica si es floating.
+					bool compute = true;  //-Deactivate when using DEM and if it is of type float-float or float-bound | Se desactiva cuando se usa DEM y es float-float o float-bound.
+					if (USE_FLOATING) {
+						ftp2 = CODE_IsFloating(code[p2]);
+						if (ftp2)massp2 = FtObjs[CODE_GetTypeValue(code[p2])].massp;
+#ifdef DELTA_HEAVYFLOATING
+						if (ftp2 && tdensity == DDT_DDT && massp2 <= (MassFluid*1.2f))deltap1 = FLT_MAX;
+#else
+						if (ftp2 && tdensity == DDT_DDT)deltap1 = FLT_MAX;
+#endif
+						if (ftp2 && shift && shiftmode == SHIFT_NoBound)shiftposfsp1.x = FLT_MAX; //-With floating objects do not use shifting. | Con floatings anula shifting.
+						compute = !(USE_FTEXTERNAL && ftp1 && (boundp2 || ftp2)); //-Deactivate when using DEM and if it is of type float-float or float-bound. | Se desactiva cuando se usa DEM y es float-float o float-bound.
+					}
+
+					tfloat4 velrhop2 = velrhop[p2];
+					if (rsym)velrhop2.y = -velrhop2.y; //<vs_syymmetry>
+
+					//-Density derivative.
+					const float rhop1over2 = rhopp1 / velrhop2.w;
+					float dvx = velp1.x - velrhop2.x, dvy = velp1.y - velrhop2.y, dvz = velp1.z - velrhop2.z;
+					if (compute)arp1 += massp2*(dvx*frx + dvy*fry + dvz*frz)*rhop1over2;
+
+					const float cbar = max(PhaseArray[pp2].Cs0, PhaseArray[pp2].Cs0); //<vs_non-Newtonian>
+																					  //-Density Diffusion Term (DeltaSPH Molteni).
+					if (tdensity == DDT_DDT && deltap1 != FLT_MAX) {
+						const float visc_densi = DDTkh*cbar*(rhop1over2 - 1.f) / (rr2 + Eta2);
+						const float dot3 = (drx*frx + dry*fry + drz*frz);
+						const float delta = (pp1 == pp2 ? visc_densi*dot3*massp2 : 0); //<vs_non-Newtonian>
+																					   //deltap1 = (boundp2 ? FLT_MAX : deltap1 + delta);
+						deltap1 = (boundp2 && TBoundary == BC_DBC ? FLT_MAX : deltap1 + delta);
+					}
+					//-Density Diffusion Term (Fourtakas et al 2019).  //<vs_dtt2_ini>
+					if ((tdensity == DDT_DDT2 || (tdensity == DDT_DDT2Full && !boundp2)) && deltap1 != FLT_MAX && !ftp2) {
+						const float rh = 1.f + DDTgz*drz;
+						const float drhop = RhopZero*pow(rh, 1.f / Gamma) - RhopZero;
+						const float visc_densi = DDTkh*cbar*((velrhop2.w - rhopp1) - drhop) / (rr2 + Eta2);
+						const float dot3 = (drx*frx + dry*fry + drz*frz);
+						const float delta = (pp1 == pp2 ? visc_densi*dot3*massp2 / velrhop2.w : 0); //<vs_non-Newtonian>
+						deltap1 = (boundp2 ? FLT_MAX : deltap1 - delta);
+					}  //<vs_dtt2_end>
+
+					   //-Shifting correction.
+					if (shift && shiftposfsp1.x != FLT_MAX) {
+						bool heavyphase = (PhaseArray[pp1].mass > PhaseArray[pp2].mass && pp1 != pp2 ? true : false);
+						const float massrhop = massp2 / velrhop2.w;
+						const bool noshift = (boundp2 && (shiftmode == SHIFT_NoBound || (shiftmode == SHIFT_NoFixed && CODE_IsFixed(code[p2]))));
+						shiftposfsp1.x = (noshift ? FLT_MAX : (heavyphase ? 0 : shiftposfsp1.x + massrhop*frx)); //-For boundary do not use shifting. | Con boundary anula shifting.                            
+						shiftposfsp1.y += (heavyphase ? 0 : massrhop*fry); //<vs_non-Newtonian>
+						shiftposfsp1.z += (heavyphase ? 0 : massrhop*frz); //<vs_non-Newtonian>
+						shiftposfsp1.w -= (heavyphase ? 0 : massrhop*(drx*frx + dry*fry + drz*frz)); //<vs_non-Newtonian>
+					}
+
+					//===== vel gradient ===== 
+					if (compute) {
+						const float dot = drx*dvx + dry*dvy + drz*dvz;
+						const float dot_rr2 = dot / (rr2 + Eta2);
+						visc = max(dot_rr2, visc);
+						if (tvisco != VISCO_Artificial) { //<vs_non-Newtonian>
+							{//vel gradients
+								if (boundp2) {
+									dvx = 2.f*velp1.x; dvy = 2.f*velp1.y; dvz = 2.f*velp1.z;  //fomraly I should use the moving BC vel as ug=2ub-uf
+								}
+								GetVelocityGradients_SPH_tsym(massp2, velrhop2, dvx, dvy, dvz, frx, fry, frz, gradvelp1);
+							}
+						}
+					}
+					rsym = (rsymp1 && !rsym && float(posp1.y - dry) <= KernelSize);   //<vs_syymmetry>
+					if (rsym)p2--;																										//<vs_syymmetry>
+				}
+				else rsym = false;																									//<vs_syymmetry>
+			}
+		}
+		//-Sum results together. | Almacena resultados.
+		if (shift || arp1 || visc) {
+			if (tdensity != DDT_None) {
+				if (delta)delta[p1] = (delta[p1] == FLT_MAX || deltap1 == FLT_MAX ? FLT_MAX : delta[p1] + deltap1);
+				else if (deltap1 != FLT_MAX)arp1 += deltap1;
+			}
+			ar[p1] += arp1;
+			//ace[p1] = ace[p1] + acep1;
+			const int th = omp_get_thread_num();
+			if (visc > viscth[th*OMP_STRIDE])viscth[th*OMP_STRIDE] = visc;
+			if (tvisco != VISCO_Artificial) {
+				gradvel[p1].xx += gradvelp1.xx;
+				gradvel[p1].xy += gradvelp1.xy;
+				gradvel[p1].xz += gradvelp1.xz;
+				gradvel[p1].yy += gradvelp1.yy;
+				gradvel[p1].yz += gradvelp1.yz;
+				gradvel[p1].zz += gradvelp1.zz;
+			}
+			if (shift)shiftposfs[p1] = shiftposfsp1;
+		}
+	}
+	//-Keep max value in viscdt. | Guarda en viscdt el valor maximo.
+	for (int th = 0; th<OmpThreads; th++)if (viscdt<viscth[th*OMP_STRIDE])viscdt = viscth[th*OMP_STRIDE];
+}
+
+//==============================================================================
+/// Interaction of Fluid-Fluid/Bound & Bound-Fluid (forces and DEM) for NN using the SPH approach
+//==============================================================================
+template<TpKernel tker, TpFtMode ftmode, TpVisco tvisco, TpDensity tdensity, bool shift>
+void JSphCpu::Interaction_ForcesCpuT_NN_Elastic(const stinterparmsc &t, StInterResultc &res)const
+{
+	float viscdt = res.viscdt;
+	float viscetadt = res.viscetadt;
+	if (t.npf) {
+		//Pressure gradient, velocity gradients (symetric)
+		//-Interaction Fluid-Fluid.
+		InteractionForcesFluid_NN_Elastic_VelGrad<tker, ftmode, tvisco, tdensity, shift>(t.npf, t.npb, false, Visco
+			, t.divdata, t.dcell, t.spsgradvel, t.sigma, t.d_tensor, t.pos, t.velrhop, t.code, t.idp, t.press
+			, viscdt, t.ar, t.ace, t.delta, t.shiftmode, t.shiftposfs);
+		//-Interaction Fluid-Bound.
+		InteractionForcesFluid_NN_Elastic_VelGrad<tker, ftmode, tvisco, tdensity, shift>(t.npf, t.npb, true, Visco*ViscoBoundFactor
+			, t.divdata, t.dcell, t.spsgradvel, t.sigma, t.d_tensor, t.pos, t.velrhop, t.code, t.idp, t.press
+			, viscdt, t.ar, t.ace, t.delta, t.shiftmode, t.shiftposfs);
+
+		if (tvisco != VISCO_Artificial) {
+			//Build strain rate tensor  //what will happen here for boundary particles?
+			InteractionForcesFluid_NN_EP_Elastic_Visco_eta<ftmode, tvisco>(t.npf, t.npb, Visco
+				, t.visco_eta, t.velrhop, t.spsgradvel, t.d_tensor, t.auxnn, viscetadt, t.epsilon1, t.epsilon2, t.pos, t.press, t.code, t.idp);
+		}
+
+		if (tvisco != VISCO_ConstEq) {
+			//Morris
+			InteractionForcesFluid_NN_SPH_Morris<tker, ftmode, tvisco, tdensity, shift>(t.npf, t.npb, false, Visco
+				, t.divdata, t.dcell, t.visco_eta, t.spstau, t.spsgradvel, t.auxnn, t.pos, t.velrhop, t.code, t.idp, t.ace);
+			//-Interaction Fluid-Bound.     
+			InteractionForcesFluid_NN_SPH_Morris<tker, ftmode, tvisco, tdensity, shift>(t.npf, t.npb, true, Visco*ViscoBoundFactor
+				, t.divdata, t.dcell, t.visco_eta, t.spstau, t.spsgradvel, t.auxnn, t.pos, t.velrhop, t.code, t.idp, t.ace);
+		}
+		else {
+			//-ConsEq;
+			// Build strain rate tensor and compute eta_visco //what will happen here for boundary particles?
+			/*InteractionForcesFluid_NN_SPH_Visco_Stress_tensor<ftmode, tvisco>(t.npf, t.npb, Visco
+			, t.visco_eta, t.spstau, t.d_tensor, t.auxnn, t.pos, t.code, t.idp);*/
+			InteractionForcesFluid_NN_SPH_Elastic_Stress_tensor<ftmode, tvisco>(t.npf, t.npb, Visco
+				, t.visco_eta, t.spstau, t.d_tensor, t.auxnn, t.cigma1, t.cigma2, t.pos, t.code, t.idp);
+			//-Compute viscous terms and add them to the acceleration       
+			InteractionForcesFluid_NN_SPH_ConsEq_Soil<tker, ftmode, tvisco, tdensity, shift>(t.npf, t.npb, false, Visco
+				, t.divdata, t.dcell, t.visco_eta, t.spstau, t.auxnn, t.pos, t.velrhop, t.code, t.idp, t.ace);
+			//-Interaction Fluid-Bound.     
+			InteractionForcesFluid_NN_SPH_ConsEq_Soil<tker, ftmode, tvisco, tdensity, shift>(t.npf, t.npb, true, Visco*ViscoBoundFactor
+				, t.divdata, t.dcell, t.visco_eta, t.spstau, t.auxnn, t.pos, t.velrhop, t.code, t.idp, t.ace);
+		}
+
+		//-Interaction of DEM Floating-Bound & Floating-Floating. //(DEM)
+		if (UseDEM)InteractionForcesDEM(CaseNfloat, t.divdata, t.dcell
+			, FtRidp, DemData, t.pos, t.velrhop, t.code, t.idp, viscdt, t.ace);
+	}
+	if (t.npbok) {
+		//-Interaction Bound-Fluid.
+		InteractionForcesBound_NN_SPH<tker, ftmode>(t.npbok, 0, t.divdata, t.dcell
+			, t.pos, t.velrhop, t.code, t.idp, viscdt, t.ar);
+	}
+	res.viscdt = viscdt;
+	res.viscetadt = viscetadt;
+}
+
+//start of Elastic-Plastic model
+
+//==============================================================================
+/// Perform calculations for NN using the SPH approach: Calculates the Elastic Stress tensor per dt
+//==============================================================================
+template<TpFtMode ftmode, TpVisco tvisco> void JSphCpu::InteractionForcesFluid_NN_EPmodel_Stress_tensor
+(unsigned n, unsigned pinit, float visco, float *visco_eta, tsymatrix3f *sigma, tsymatrix3f *sigmaS
+	, tsymatrix3f *tau, const tsymatrix3f *D_tensor, float *auxnn, tfloat3 *cigma1, tfloat3 *cigma2
 	, const tdouble3 *pos, const typecode *code, const unsigned *idp)const
 {
 	//-Initialise execution with OpenMP. | Inicia ejecucion con OpenMP.
@@ -736,41 +1140,201 @@ template<TpFtMode ftmode, TpVisco tvisco> void JSphCpu::InteractionForcesFluid_N
 		//stress related to p1
 		const float visco_etap1 = visco_eta[p1];
 		const tsymatrix3f D_tensorp1 = D_tensor[p1];
-		const tsymatrix3f div3_D_tensorp1 = D_tensor[p1].xx+D_tensor[p1].yy+D_tensor[p1].zz ;
+		//const float div3_D_tensorp1 = D_tensor[p1].xx + D_tensor[p1].yy + D_tensor[p1].zz;
+		//tsymatrix3f sigma_tensorp1 = sigma[p1];
 		const bool rsymp1 = (Symmetry && posp1.y <= KernelSize); //<vs_syymmetry>
 		const typecode pp1 = CODE_GetTypeValue(code[p1]);
 
 		//setup stress related variables
-		/*tsymatrix3f tau_tensorp1 = { 0,0,0,0,0,0 }; float tau_tensor_magn = 0.f;
-		float I_t, II_t = 0.f; float J1_t, J2_t = 0.f;
-		GetStressTensor_sym(D_tensorp1, visco_etap1, I_t, II_t, J1_t, J2_t, tau_tensor_magn, tau_tensorp1);*/
+		//tsymatrix3f sigmaS_tensorp1 = { 0,0,0,0,0,0 }; float sigmaS_tensor_magn = 0.f; //store deviatoric stress
+		//float I_t, II_t = 0.f; float J1_t, J2_t = 0.f;
+		//float I_1, J_2 = 0.f;
+		//GetSigmaInvariant_sym(sigma_tensorp1, I_1, J_2, I_t, II_t, J1_t, J2_t, sigmaS_tensor_magn, sigmaS_tensorp1);
+
+		//float DP_phi = PhaseCte[pp1].DP_phi; float DP_cohes = PhaseCte[pp1].DP_cohes;
+		//const float phi = float(DP_phi*(TORAD));
+		//const float tan_phi = tan(phi);
+		//const float coef = sqrt(9.f + 12.f * tan_phi*tan_phi);
+		//const float alpha_phi = tan_phi / coef; //coefficient of DP criteria      
+		//const float kc = 3.f*DP_cohes / coef;  //coefficient of DP criteria 
+		/*float yield_value0 = 0.f;  //value of yield function
+		GetYieldDruckerPrager(sigma_tensorp1, alpha_phi, kc, yield_value0);
+
+		//if it yields, correct stress tensor
+		if (yield_value_0 > 0.f) {
+		ModifyStressOfDruckerPrager(I_1, J_2, alpha_phi, kc, sigma_tensorp1,sigmaS_tensorp1,yield_value_0);
+		}*/
+
+		//compute elastic stress and add into the stress from the previous time step
 		tsymatrix3f delta_sigma_tensorp1 = { 0,0,0,0,0,0 }; float delta_sigma_tensor_magn = 0.f;
-		float I_t, II_t = 0.f; float J1_t, J2_t = 0.f;
 		float E = PhaseCte[pp1].E; float mu = PhaseCte[pp1].mu;
-		GetDeltaSigma_sym(D_tensorp1, E, mu, div3_D_tensorp1, I_t, II_t, J1_t, J2_t, delta_sigma_tensor_magn, delta_sigma_tensorp1);
+		//float DP_phi = PhaseCte[pp1].DP_phi; float DP_cohes = PhaseCte[pp1].DP_cohes;
+		float I_t, II_t = 0.f; float J1_t, J2_t = 0.f;
+		//add elastic matrix
+		//GetDeltaSigma_elastic(D_tensorp1, sigma_tensorp1, E, mu, I_t, II_t, J1_t, J2_t, delta_sigma_tensor_magn, delta_sigma_tensorp1);
+		GetStressTensor_sym_Elastic(D_tensorp1, E, mu, I_t, II_t, J1_t, J2_t, delta_sigma_tensor_magn, delta_sigma_tensorp1);
+		
+		/*float yield_value1 = 0.f;  //value of yield function
+		GetYieldDruckerPrager(delta_sigma_tensorp1, alpha_phi, kc, yield_value1);
 
+		//correct delta_sigma stress tensor
+		if (yield_value1 > 1e-5f){
+		int iter = 0;
+		while (abs(yield_value1) > 1e-5f) {
+		if (iter++ > 80) break;
+		const float G = 0.5f*E / (1 + mu);
+		const float K = E / (1 - 2.f*mu)/ 3.f;  //bulk modulus
+		float DP_psi = PhaseCte[pp1].DP_psi;
+		const float psi = float(DP_psi*(TORAD));
+		const float tan_psi = tan(psi);
+		const float coef0 = sqrt(9.f + 12.f * tan_psi*tan_psi);
+		const float k_psi = 3.f*tan_psi / coef0;
+		float lambda = yield_value1 / (G + K*3.f*alpha_phi*k_psi);
+		tsymatrix3f delta_sigmaS_tensorp1 = { 0,0,0,0,0,0 };
+		float dI_1, dJ_2 = 0.f;
+		GetSigmaInvariant_sym(delta_sigma_tensorp1, dI_1, dJ_2, delta_sigmaS_tensorp1);
+		delta_sigma_tensorp1.xx = delta_sigma_tensorp1.xx - lambda*(G / sqrt(dJ_2)*delta_sigmaS_tensorp1.xx + K*k_psi);
+		delta_sigma_tensorp1.yy = delta_sigma_tensorp1.yy - lambda*(G / sqrt(dJ_2)*delta_sigmaS_tensorp1.yy + K*k_psi);
+		delta_sigma_tensorp1.zz = delta_sigma_tensorp1.zz - lambda*(G / sqrt(dJ_2)*delta_sigmaS_tensorp1.zz + K*k_psi);
+		delta_sigma_tensorp1.xy = delta_sigma_tensorp1.xy - lambda*(G / sqrt(dJ_2)*delta_sigmaS_tensorp1.xy);
+		delta_sigma_tensorp1.xz = delta_sigma_tensorp1.xz - lambda*(G / sqrt(dJ_2)*delta_sigmaS_tensorp1.xz);
+		delta_sigma_tensorp1.yz = delta_sigma_tensorp1.yz - lambda*(G / sqrt(dJ_2)*delta_sigmaS_tensorp1.yz);
+		GetYieldDruckerPrager(delta_sigma_tensorp1, alpha_phi, kc, yield_value1);
+		}
+		}*/
 
-		//debug uncomment if you want an output of effective viscosity
-		//if(tau_tensor_magn){
-		//  auxnn[p1] = visco_etap1; // D_tensor_magn;
-		//}
+		//copy delta_sigma to sigma
+		tau[p1].xx = delta_sigma_tensorp1.xx;
+		tau[p1].yy = delta_sigma_tensorp1.yy;
+		tau[p1].zz = delta_sigma_tensorp1.zz;
+		tau[p1].xy = delta_sigma_tensorp1.xy;
+		tau[p1].xz = delta_sigma_tensorp1.xz;
+		tau[p1].yz = delta_sigma_tensorp1.yz;
+	}
+}
 
-		////-Sum results together. | Almacena resultados.
-		if (tvisco != VISCO_Artificial) {
-			delta_sigma[p1].xx = delta_sigma_tensorp1.xx; delta_sigma[p1].xy = delta_sigma_tensorp1.xy; delta_sigma[p1].xz = delta_sigma_tensorp1.xz;
-			delta_sigma[p1].yy = delta_sigma_tensorp1.yy; delta_sigma[p1].yz = delta_sigma_tensorp1.yz;
-			delta_sigma[p1].zz = delta_sigma_tensorp1.zz;
+//==============================================================================
+/// Accelaration Diffusion Term, Arrificial viscosity 
+//==============================================================================
+template<TpKernel tker, TpFtMode ftmode, TpVisco tvisco, TpDensity tdensity, bool shift>
+void JSphCpu::InteractionForcesFluid_NN_EPmodel_Morris(unsigned n, unsigned pinit, bool boundp2, float visco
+	, StDivDataCpu divdata, const unsigned *dcell
+	, float *visco_eta, const tsymatrix3f* tau, tsymatrix3f* gradvel, float *auxnn
+	, const tdouble3 *pos, const tfloat4 *velrhop, const typecode *code, const unsigned *idp
+	, tfloat3 *ace)const
+{
+	//-Initialise execution with OpenMP. | Inicia ejecucion con OpenMP.
+	const int pfin = int(pinit + n);
+#ifdef OMP_USE
+#pragma omp parallel for schedule (guided)
+#endif
+	for (int p1 = int(pinit); p1<pfin; p1++) {
+		tfloat3 acep1 = TFloat3(0);
+		float visc = 0;
+
+		//-Obtain data of particle p1 in case of floating objects. | Obtiene datos de particula p1 en caso de existir floatings.
+		bool ftp1 = false;     //-Indicate if it is floating. | Indica si es floating.
+		if (USE_FLOATING) {
+			ftp1 = CODE_IsFloating(code[p1]);
+		}
+
+		//-Obtain data of particle p1.
+		const tdouble3 posp1 = pos[p1];
+		const tfloat3 velp1 = TFloat3(velrhop[p1].x, velrhop[p1].y, velrhop[p1].z);
+		const float rhopp1 = velrhop[p1].w;
+		const float visco_etap1 = visco_eta[p1];
+		const bool rsymp1 = (Symmetry && posp1.y <= KernelSize); //<vs_syymmetry>
+		const typecode pp1 = CODE_GetTypeValue(code[p1]); //<vs_non-Newtonian>
+
+														  //-Search for neighbours in adjacent cells.
+		const StNgSearch ngs = nsearch::Init(dcell[p1], boundp2, divdata);
+		for (int z = ngs.zini; z<ngs.zfin; z++)for (int y = ngs.yini; y<ngs.yfin; y++) {
+			const tuint2 pif = nsearch::ParticleRange(y, z, ngs, divdata);
+
+			//-Interaction of Fluid with type Fluid or Bound. | Interaccion de Fluid con varias Fluid o Bound.
+			//------------------------------------------------------------------------------------------------
+			bool rsym = false; //<vs_syymmetry>
+			for (unsigned p2 = pif.x; p2<pif.y; p2++) {
+				const float drx = float(posp1.x - pos[p2].x);
+				float dry = float(posp1.y - pos[p2].y);
+				if (rsym)    dry = float(posp1.y + pos[p2].y); //<vs_syymmetry>
+				const float drz = float(posp1.z - pos[p2].z);
+				const float rr2 = drx*drx + dry*dry + drz*drz;
+				if (rr2 <= KernelSize2 && rr2 >= ALMOSTZERO) {
+					//-Computes kernel.
+					const float fac = fsph::GetKernel_Fac<tker>(CSP, rr2);
+					const float frx = fac*drx, fry = fac*dry, frz = fac*drz; //-Gradients.
+
+																			 //===== Get mass of particle p2 ===== 
+																			 //<vs_non-Newtonian>
+					const typecode pp2 = (boundp2 ? pp1 : CODE_GetTypeValue(code[p2])); //<vs_non-Newtonian>
+					float massp2 = (boundp2 ? MassBound : PhaseArray[pp2].mass); //-Contiene masa de particula segun sea bound o fluid.
+																				 //Note if you masses are very different more than a ratio of 1.3 then: massp2 = (boundp2 ? PhaseArray[pp1].mass : PhaseArray[pp2].mass);
+
+																				 //Floating
+					bool ftp2 = false;    //-Indicate if it is floating | Indica si es floating.
+					bool compute = true;  //-Deactivate when using DEM and if it is of type float-float or float-bound | Se desactiva cuando se usa DEM y es float-float o float-bound.
+					if (USE_FLOATING) {
+						ftp2 = CODE_IsFloating(code[p2]);
+						if (ftp2)massp2 = FtObjs[CODE_GetTypeValue(code[p2])].massp;
+						compute = !(USE_FTEXTERNAL && ftp1 && (boundp2 || ftp2)); //-Deactivate when using DEM and if it is of type float-float or float-bound. | Se desactiva cuando se usa DEM y es float-float o float-bound.
+					}
+
+					tfloat4 velrhop2 = velrhop[p2];
+					if (rsym)velrhop2.y = -velrhop2.y; //<vs_syymmetry>                                               
+													   //-velocity dvx.
+					float dvx = velp1.x - velrhop2.x, dvy = velp1.y - velrhop2.y, dvz = velp1.z - velrhop2.z;
+					if (boundp2) { //this applies no slip on tensor                                     
+						dvx = 2.f*velp1.x; dvy = 2.f*velp1.y; dvz = 2.f*velp1.z;  //fomraly I should use the moving BC vel as ug=2ub-uf
+					}
+					const float cbar = max(PhaseArray[pp2].Cs0, PhaseArray[pp2].Cs0);
+
+					//===== Viscosity ===== 
+					if (compute) {
+						const float dot = drx*dvx + dry*dvy + drz*dvz;
+						const float dot_rr2 = dot / (rr2 + Eta2);
+						visc = max(dot_rr2, visc);
+						const float visco_NN = PhaseCte[pp2].visco;
+						if (tvisco == VISCO_ConstEq) {//-Artificial viscosity.
+							if (dot<0) {
+								const float amubar = KernelH*dot_rr2;  //amubar=CTE.h*dot/(rr2+CTE.eta2);
+								const float robar = (rhopp1 + velrhop2.w)*0.5f;
+								const float pi_visc = (-visco_NN*cbar*amubar / robar)*massp2;
+								acep1.x -= pi_visc*frx; acep1.y -= pi_visc*fry; acep1.z -= pi_visc*frz;
+							}
+						}
+						else if (tvisco == VISCO_LaminarSPS) {//-Laminar viscosity.
+							{//-Laminar contribution.
+								float visco_etap2 = visco_eta[p2];
+								//Morris Operator
+								if (boundp2)visco_etap2 = visco_etap1;
+								const float temp = (visco_etap1 + visco_etap2) / ((rr2 + Eta2)*velrhop2.w);
+								const float vtemp = massp2*temp*(drx*frx + dry*fry + drz*frz);
+								acep1.x += vtemp*dvx; acep1.y += vtemp*dvy; acep1.z += vtemp*dvz;
+							}
+							//-SPS turbulence model.
+							//-SPS turbulence model is disabled in v5.0 NN version
+						}
+					}
+					rsym = (rsymp1 && !rsym && float(posp1.y - dry) <= KernelSize); //<vs_syymmetry>
+					if (rsym)p2--;                                       //<vs_syymmetry>
+				}
+				else rsym = false; //<vs_syymmetry>
+			}
+		}
+		//-Sum results together. | Almacena resultados.
+		if (acep1.x || acep1.y || acep1.z) {
+			ace[p1] = ace[p1] + acep1;
 		}
 	}
 }
 
-
 //==============================================================================
 /// Perform calculations for NN using the SPH approach: Calculates the strain rate tensor
 //==============================================================================
-template<TpFtMode ftmode, TpVisco tvisco> void JSphCpu::InteractionForcesFluid_NN_EPmodel_Visco_eta
+template<TpFtMode ftmode, TpVisco tvisco> void JSphCpu::InteractionForcesFluid_NN_EP_Elastic_Visco_eta
 (unsigned n, unsigned pinit, float visco, float *visco_eta, const tfloat4 *velrhop
-	, const tsymatrix3f* gradvel, tsymatrix3f* D_tensor, float *auxnn, float &viscetadt
+	, const tsymatrix3f* gradvel, tsymatrix3f* D_tensor, float *auxnn, float &viscetadt, tfloat3 *epsilon1, tfloat3 *epsilon2
 	, const tdouble3 *pos, const float *press, const typecode *code, const unsigned *idp)const
 {
 	//-Initialize viscth to calculate viscdt maximo con OpenMP. | Inicializa viscth para calcular visdt maximo con OpenMP.
@@ -791,11 +1355,11 @@ template<TpFtMode ftmode, TpVisco tvisco> void JSphCpu::InteractionForcesFluid_N
 		const bool rsymp1 = (Symmetry && posp1.y <= KernelSize); //<vs_syymmetry>
 		const typecode pp1 = CODE_GetTypeValue(code[p1]); //<vs_non-Newtonian>
 
-														  //Strain rate tensor 
+		//Strain rate tensor 
 		tsymatrix3f D_tensorp1 = { 0,0,0,0,0,0 };
 		float div_D_tensor = 0; float D_tensor_magn = 0;
 		float I_D, II_D = 0.f; float J1_D, J2_D = 0.f;
-		GetStrainRateTensor_tsym(gradvelp1, I_D, II_D, J1_D, J2_D, div_D_tensor, D_tensor_magn, D_tensorp1);
+		GetStrainRateTensor_tsym_Soil(gradvelp1, I_D, II_D, J1_D, J2_D, div_D_tensor, D_tensor_magn, D_tensorp1);
 
 		//Effective viscosity
 		//float visco_etap1 = 0.f;
@@ -815,238 +1379,184 @@ template<TpFtMode ftmode, TpVisco tvisco> void JSphCpu::InteractionForcesFluid_N
 			D_tensor[p1].zz = D_tensorp1.zz;
 		}
 		//debug
-		//if(D_tensor_magn){
-		//  auxnn[p1] = visco_etap1; // d_tensor_magn;
-		//} 
+		if(D_tensor_magn){
+		  //auxnn[p1] = visco_etap1; // d_tensor_magn;
+		  epsilon1[p1].x = D_tensorp1.xx;
+		  epsilon1[p1].y = D_tensorp1.yy;
+		  epsilon1[p1].z = D_tensorp1.zz;
+		  epsilon2[p1].x = D_tensorp1.xy;
+		  epsilon2[p1].y = D_tensorp1.xz;
+		  epsilon2[p1].z = D_tensorp1.yz;
+		} 
 		//const int th = omp_get_thread_num();
 		//if (visco_etap1>viscetath[th*OMP_STRIDE])viscetath[th*OMP_STRIDE] = visco_etap1;
 	}
 	//for (int th = 0; th<OmpThreads; th++)if (viscetadt<viscetath[th*OMP_STRIDE])viscetadt = viscetath[th*OMP_STRIDE];
 }
 
-
 //==============================================================================
-/// calculate pressure using soil constitutive
+/// Acceleration Diffusion Term, artificial pressure
 //==============================================================================
-template<TpKernel tker, TpFtMode ftmode, TpVisco tvisco, TpDensity tdensity, bool shift>
-void JSphCpu::InteractionForcesFluid_NN_EPmodel_PressGrad(unsigned n, unsigned pinit, bool boundp2, float visco
+template<TpKernel tker, TpFtMode ftmode, TpVisco tvisco, TpAcceleration tacceleration, bool shift>
+void JSphCpu::InteractionForcesFluid_NN_Tensile_instability(unsigned n, unsigned pinit, bool boundp2, float visco
 	, StDivDataCpu divdata, const unsigned *dcell
-	, tsymatrix3f* gradvel, tsymatrix3f* sigma, tsymatrix3f* delta_sigma, tsymatrix3f* D_tensor
+	, float *visco_eta, const tsymatrix3f* tau, float *auxnn, const tsymatrix3f* rstress, const float *pstress
 	, const tdouble3 *pos, const tfloat4 *velrhop, const typecode *code, const unsigned *idp
-	, const float *press
-	, float &viscdt, float *ar, tfloat3 *ace, float *delta
-	, TpShifting shiftmode, tfloat4 *shiftposfs)const
+	, tfloat3 *ace)const
 {
-  //-Initialize viscth to calculate viscdt maximo con OpenMP. | Inicializa viscth para calcular visdt maximo con OpenMP.
-  float viscth[OMP_MAXTHREADS*OMP_STRIDE];
-  for (int th = 0; th<OmpThreads; th++)viscth[th*OMP_STRIDE] = 0;
-  //-Initialise execution with OpenMP. | Inicia ejecucion con OpenMP.
-  const int pfin = int(pinit + n);
+	//-Initialise execution with OpenMP. | Inicia ejecucion con OpenMP.
+	const int pfin = int(pinit + n);
 #ifdef OMP_USE
 #pragma omp parallel for schedule (guided)
 #endif
-  for (int p1 = int(pinit); p1<pfin; p1++) {
-	  float visc = 0, arp1 = 0, deltap1 = 0;
-	  tfloat3 acep1 = TFloat3(0);
-	  //tsymatrix3f gradvelp1 = { 0,0,0,0,0,0 };
-	  tsymatrix3f delta_sigmap1 = { 0,0,0,0,0,0 };
-	  //-Variables for Shifting.
-	  tfloat4 shiftposfsp1;
-	  if (shift)shiftposfsp1 = shiftposfs[p1];
+	for (int p1 = int(pinit); p1<pfin; p1++) {
+		tfloat3 acep1 = TFloat3(0);
+		float visc = 0;
+		//-Obtain data of particle p1 in case of floating objects. | Obtiene datos de particula p1 en caso de existir floatings.
+		bool ftp1 = false;     //-Indicate if it is floating. | Indica si es floating.
+		if (USE_FLOATING) {
+			ftp1 = CODE_IsFloating(code[p1]);
+		}
 
-	  //-Obtain data of particle p1 in case of floating objects. | Obtiene datos de particula p1 en caso de existir floatings.
-	  bool ftp1 = false;     //-Indicate if it is floating. | Indica si es floating.
-	  if (USE_FLOATING) {
-		  ftp1 = CODE_IsFloating(code[p1]);
-		  if (ftp1 && tdensity != DDT_None)deltap1 = FLT_MAX; //-DDT is not applied to floating particles.
-		  if (ftp1 && shift)shiftposfsp1.x = FLT_MAX;  //-For floating objects do not calculate shifting. | Para floatings no se calcula shifting.
-	  }
+		//-Obtain data of particle p1.
+		const tdouble3 posp1 = pos[p1];
+		const tfloat3 velp1 = TFloat3(velrhop[p1].x, velrhop[p1].y, velrhop[p1].z);
+		const float rhopp1 = velrhop[p1].w;
+		const float visco_etap1 = visco_eta[p1]; //<vs_non-Newtonian>
+		const tsymatrix3f stress_artificialp1 = rstress[p1];
+		const float pressp1 = pstress[p1];
+		const typecode pp1 = (CODE_GetTypeValue(code[p1])); //<vs_non-Newtonian>
+		const bool rsymp1 = (Symmetry && posp1.y <= KernelSize); //<vs_syymmetry>
 
-	  //-Obtain data of particle p1.
-	  const tdouble3 posp1 = pos[p1];
-	  const tfloat3 velp1 = TFloat3(velrhop[p1].x, velrhop[p1].y, velrhop[p1].z);
-	  const float rhopp1 = velrhop[p1].w;
-	  //const float pressp1 = press[p1];
-	  const tsymatrix3f sigma_tensorp1=sigma[p1];
-	  //const tsymatrix3f D_tensorp1 = D_tensor[p1];
-	  //const tsymatrix3f div3_D_tensorp1 = D_tensor[p1].xx + D_tensor[p1].yy + D_tensor[p1].zz;
-	  const bool rsymp1 = (Symmetry && posp1.y <= KernelSize); //<vs_syymmetry>                                 
-															   //<vs_non-Newtonian>
-	  const typecode pp1 = CODE_GetTypeValue(code[p1]);
+																 //-Search for neighbours in adjacent cells.
+		const StNgSearch ngs = nsearch::Init(dcell[p1], boundp2, divdata);
+		for (int z = ngs.zini; z<ngs.zfin; z++)for (int y = ngs.yini; y<ngs.yfin; y++) {
+			const tuint2 pif = nsearch::ParticleRange(y, z, ngs, divdata);
 
-	  //-Search for neighbours in adjacent cells.
-	  const StNgSearch ngs = nsearch::Init(dcell[p1], boundp2, divdata);
-	  for (int z = ngs.zini; z<ngs.zfin; z++)for (int y = ngs.yini; y<ngs.yfin; y++) {
-		  const tuint2 pif = nsearch::ParticleRange(y, z, ngs, divdata);
+			//-Interaction of Fluid with type Fluid or Bound. | Interaccion de Fluid con varias Fluid o Bound.
+			//------------------------------------------------------------------------------------------------
+			bool rsym = false; //<vs_syymmetry>
+			for (unsigned p2 = pif.x; p2<pif.y; p2++) {
+				const float drx = float(posp1.x - pos[p2].x);
+				float dry = float(posp1.y - pos[p2].y);
+				if (rsym)   dry = float(posp1.y + pos[p2].y); //<vs_syymmetry>
+				const float drz = float(posp1.z - pos[p2].z);
+				const float rr2 = drx*drx + dry*dry + drz*drz;
+				if (rr2 <= KernelSize2 && rr2 >= ALMOSTZERO) {
+					//-Computes kernel.
+					const float fac = fsph::GetKernel_Fac<tker>(CSP, rr2);
+					const float frx = fac*drx, fry = fac*dry, frz = fac*drz; //-Gradients.
 
-		  //-Interaction of Fluid with type Fluid or Bound. | Interaccion de Fluid con varias Fluid o Bound.
-		  //------------------------------------------------------------------------------------------------
-		  bool rsym = false; //<vs_syymmetry>
-		  for (unsigned p2 = pif.x; p2<pif.y; p2++) {
-			  const float drx = float(posp1.x - pos[p2].x);
-			  float dry = float(posp1.y - pos[p2].y);
-			  if (rsym)    dry = float(posp1.y + pos[p2].y); //<vs_syymmetry>
-			  const float drz = float(posp1.z - pos[p2].z);
-			  const float rr2 = drx*drx + dry*dry + drz*drz;
-			  if (rr2 <= KernelSize2 && rr2 >= ALMOSTZERO) {
-				  //-Computes kernel.
-				  const float fac = fsph::GetKernel_Fac<tker>(CSP, rr2);
-				  const float frx = fac*drx, fry = fac*dry, frz = fac*drz; //-Gradients
+																			 //===== Get mass of particle p2 ===== 
+																			 //<vs_non-Newtonian>
+					const typecode pp2 = (boundp2 ? pp1 : CODE_GetTypeValue(code[p2])); //<vs_non-Newtonian>
+					float massp2 = (boundp2 ? MassBound : PhaseArray[pp2].mass); //-Contiene masa de particula segun sea bound o fluid.
+																				 //Note if you masses are very different more than a ratio of 1.3 then: massp2 = (boundp2 ? PhaseArray[pp1].mass : PhaseArray[pp2].mass);
 
-					//===== Get mass of particle p2 ===== 
-					//<vs_non-Newtonian>
-				  const typecode pp2 = (boundp2 ? pp1 : CODE_GetTypeValue(code[p2])); //<vs_non-Newtonian>
-				  float massp2 = (boundp2 ? MassBound : PhaseArray[pp2].mass); //-Contiene masa de particula segun sea bound o fluid.
-																			   //Note if you masses are very different more than a ratio of 1.3 then: massp2 = (boundp2 ? PhaseArray[pp1].mass : PhaseArray[pp2].mass);
+																				 //Floating
+					bool ftp2 = false;    //-Indicate if it is floating | Indica si es floating.
+					bool compute = true;  //-Deactivate when using DEM and if it is of type float-float or float-bound | Se desactiva cuando se usa DEM y es float-float o float-bound.
+					if (USE_FLOATING) {
+						ftp2 = CODE_IsFloating(code[p2]);
+						if (ftp2)massp2 = FtObjs[CODE_GetTypeValue(code[p2])].massp;
+						compute = !(USE_FTEXTERNAL && ftp1 && (boundp2 || ftp2)); //-Deactivate when using DEM and if it is of type float-float or float-bound. | Se desactiva cuando se usa DEM y es float-float o float-bound.
+					}
 
-																			   //Floating                      
-				  bool ftp2 = false;    //-Indicate if it is floating | Indica si es floating.
-				  bool compute = true;  //-Deactivate when using DEM and if it is of type float-float or float-bound | Se desactiva cuando se usa DEM y es float-float o float-bound.
-				  if (USE_FLOATING) {
-					  ftp2 = CODE_IsFloating(code[p2]);
-					  if (ftp2)massp2 = FtObjs[CODE_GetTypeValue(code[p2])].massp;
-#ifdef DELTA_HEAVYFLOATING
-					  if (ftp2 && tdensity == DDT_DDT && massp2 <= (MassFluid*1.2f))deltap1 = FLT_MAX;
-#else
-					  if (ftp2 && tdensity == DDT_DDT)deltap1 = FLT_MAX;
-#endif
-					  if (ftp2 && shift && shiftmode == SHIFT_NoBound)shiftposfsp1.x = FLT_MAX; //-With floating objects do not use shifting. | Con floatings anula shifting.
-					  compute = !(USE_FTEXTERNAL && ftp1 && (boundp2 || ftp2)); //-Deactivate when using DEM and if it is of type float-float or float-bound. | Se desactiva cuando se usa DEM y es float-float o float-bound.
-				  }
+					tfloat4 velrhop2 = velrhop[p2];
+					if (rsym)velrhop2.y = -velrhop2.y; //<vs_syymmetry>
 
-				  tfloat4 velrhop2 = velrhop[p2];
-				  if (rsym)velrhop2.y = -velrhop2.y; //<vs_syymmetry>
+													   //-velocity dvx.
+					const float dvx = velp1.x - velrhop2.x, dvy = velp1.y - velrhop2.y, dvz = velp1.z - velrhop2.z;
+					const float cbar = max(PhaseArray[pp2].Cs0, PhaseArray[pp2].Cs0);
 
-				  //===== Acceleration ===== 
-				  if (compute) {
-					  tsymatrix3f sigma_tensorp2 = sigma[p2]; 
-					  tsymatrix3f sigma_sum = { 0,0,0,0,0,0 };
-					  if (boundp2)sigma_tensorp2 = sigma_tensorp1;
-					  sigma_sum.xx = sigma_tensorp1.xx + sigma_tensorp2.xx;	sigma_sum.xy = sigma_tensorp1.xy + sigma_tensorp2.xy;	sigma_sum.xz = sigma_tensorp1.xz + sigma_tensorp2.xz;
-					  sigma_sum.yy = sigma_tensorp1.yy + sigma_tensorp2.yy;	sigma_sum.yz = sigma_tensorp1.yz + sigma_tensorp2.yz;
-					  sigma_sum.zz = sigma_tensorp1.zz + sigma_tensorp2.zz;
-
-					  float sigmax = (sigma_sum.xx*frx + sigma_sum.xy*fry + sigma_sum.xz*frz) / (rhopp1*velrhop2.w); // as per symetric tensor grad
-					  float sigmay = (sigma_sum.xy*frx + sigma_sum.yy*fry + sigma_sum.yz*frz) / (rhopp1*velrhop2.w);
-					  float sigmaz = (sigma_sum.xz*frx + sigma_sum.yz*fry + sigma_sum.zz*frz) / (rhopp1*velrhop2.w);
-					  //add stresses (sigma) into acelaration
-					  acep1.x += sigmax*massp2; acep1.y += sigmay*massp2; acep1.z += sigmaz*massp2;
-					  //const float prs = (sigmap1 + sigma[p2]) / (rhopp1*velrhop2.w) + (tker == KERNEL_Cubic ? fsph::GetKernelCubic_Tensil(CSP, rr2, rhopp1, pressp1, velrhop2.w, press[p2]) : 0);
-					  //const float p_vpm = -prs*massp2;
-					  //acep1.x += p_vpm*frx; acep1.y += p_vpm*fry; acep1.z += p_vpm*frz;
-				  }
-
-				  //-sigma derivative
-				  if (compute) {
-					  tsymatrix3f delta_sigma_tensorp2 = { 0,0,0,0,0,0 }; float delta_sigma_tensor_magn = 0.f;
-					  float I_t, II_t = 0.f; float J1_t, J2_t = 0.f;
-					  float E = PhaseCte[pp2].E; float mu = PhaseCte[pp2].mu;
-					  tsymatrix3f D_tensorp2 = D_tensor[p2];
-					  float div3_D_tensorp2 = D_tensor[p2].xx + D_tensor[p2].yy + D_tensor[p2].zz;
-					  GetDeltaSigma_sym(D_tensorp2, E, mu, div3_D_tensorp2, I_t, II_t, J1_t, J2_t, delta_sigma_tensor_magn, delta_sigma_tensorp2);
-					  ////-Sum results together. summarize all p2 aroud p1
-					  if (tvisco != VISCO_Artificial) {
-						  delta_sigmap1.xx += delta_sigma_tensorp2.xx; delta_sigmap1.xy += delta_sigma_tensorp2.xy; delta_sigmap1.xz += delta_sigma_tensorp2.xz;
-						  delta_sigmap1.yy += delta_sigma_tensorp2.yy; delta_sigmap1.yz += delta_sigma_tensorp2.yz;
-						  delta_sigmap1.zz += delta_sigma_tensorp2.zz;
-					  }
-				  }
-					  
-
-				  //-Density derivative.
-				  const float rhop1over2 = rhopp1 / velrhop2.w;
-				  float dvx = velp1.x - velrhop2.x, dvy = velp1.y - velrhop2.y, dvz = velp1.z - velrhop2.z;
-				  if (compute)arp1 += massp2*(dvx*frx + dvy*fry + dvz*frz)*rhop1over2;
-
-				  const float cbar = max(PhaseArray[pp2].Cs0, PhaseArray[pp2].Cs0); //<vs_non-Newtonian>
-																					//-Density Diffusion Term (DeltaSPH Molteni).
-				  if (tdensity == DDT_DDT && deltap1 != FLT_MAX) {
-					  const float visc_densi = DDTkh*cbar*(rhop1over2 - 1.f) / (rr2 + Eta2);
-					  const float dot3 = (drx*frx + dry*fry + drz*frz);
-					  const float delta = (pp1 == pp2 ? visc_densi*dot3*massp2 : 0); //<vs_non-Newtonian>
-																					 //deltap1 = (boundp2 ? FLT_MAX : deltap1 + delta);
-					  deltap1 = (boundp2 && TBoundary == BC_DBC ? FLT_MAX : deltap1 + delta);
-				  }
-				  //-Density Diffusion Term (Fourtakas et al 2019).  //<vs_dtt2_ini>
-				  if ((tdensity == DDT_DDT2 || (tdensity == DDT_DDT2Full && !boundp2)) && deltap1 != FLT_MAX && !ftp2) {
-					  const float rh = 1.f + DDTgz*drz;
-					  const float drhop = RhopZero*pow(rh, 1.f / Gamma) - RhopZero;
-					  const float visc_densi = DDTkh*cbar*((velrhop2.w - rhopp1) - drhop) / (rr2 + Eta2);
-					  const float dot3 = (drx*frx + dry*fry + drz*frz);
-					  const float delta = (pp1 == pp2 ? visc_densi*dot3*massp2 / velrhop2.w : 0); //<vs_non-Newtonian>
-					  deltap1 = (boundp2 ? FLT_MAX : deltap1 - delta);
-				  }  //<vs_dtt2_end>
-
-					 //-Shifting correction.
-				  if (shift && shiftposfsp1.x != FLT_MAX) {
-					  bool heavyphase = (PhaseArray[pp1].mass>PhaseArray[pp2].mass && pp1 != pp2 ? true : false);
-					  const float massrhop = massp2 / velrhop2.w;
-					  const bool noshift = (boundp2 && (shiftmode == SHIFT_NoBound || (shiftmode == SHIFT_NoFixed && CODE_IsFixed(code[p2]))));
-					  shiftposfsp1.x = (noshift ? FLT_MAX : (heavyphase ? 0 : shiftposfsp1.x + massrhop*frx)); //-For boundary do not use shifting. | Con boundary anula shifting.                            
-					  shiftposfsp1.y += (heavyphase ? 0 : massrhop*fry); //<vs_non-Newtonian>
-					  shiftposfsp1.z += (heavyphase ? 0 : massrhop*frz); //<vs_non-Newtonian>
-					  shiftposfsp1.w -= (heavyphase ? 0 : massrhop*(drx*frx + dry*fry + drz*frz)); //<vs_non-Newtonian>
-				  }
+					//===== Viscosity ===== 
+					if (compute) {
+						const float dot = drx*dvx + dry*dvy + drz*dvz;
+						const float dot_rr2 = dot / (rr2 + Eta2);
+						visc = max(dot_rr2, visc);
 
 
-				  //===== Viscosity ===== 
-				  if (compute) {
-					  const float dot = drx*dvx + dry*dvy + drz*dvz;
-					  const float dot_rr2 = dot / (rr2 + Eta2);
-					  visc = max(dot_rr2, visc);
-					  //if (tvisco != VISCO_Artificial) { //<vs_non-Newtonian>
-						 // {//vel gradients
-							//  if (boundp2) {
-							//	  dvx = 2.f*velp1.x; dvy = 2.f*velp1.y; dvz = 2.f*velp1.z;  //fomraly I should use the moving BC vel as ug=2ub-uf
-							//  }
-							//  GetVelocityGradients_SPH_tsym(massp2, velrhop2, dvx, dvy, dvz, frx, fry, frz, gradvelp1);
-						 // }
-					  //}
-				  }
-				  rsym = (rsymp1 && !rsym && float(posp1.y - dry) <= KernelSize);   //<vs_syymmetry>
-				  if (rsym)p2--;																										//<vs_syymmetry>
-			  }
-			  else rsym = false;																									//<vs_syymmetry>
-		  }
-	  }
-	  //-Sum results together. | Almacena resultados.
-	  if (shift || arp1 || acep1.x || acep1.y || acep1.z || visc) {
-		  if (tdensity != DDT_None) {
-			  if (delta)delta[p1] = (delta[p1] == FLT_MAX || deltap1 == FLT_MAX ? FLT_MAX : delta[p1] + deltap1);
-			  else if (deltap1 != FLT_MAX)arp1 += deltap1;
-		  }
-		  ar[p1] += arp1;
-		  ace[p1] = ace[p1] + acep1;
-		  delta_sigma[p1].xx += delta_sigmap1.xx;
-		  delta_sigma[p1].xy += delta_sigmap1.xy;
-		  delta_sigma[p1].xz += delta_sigmap1.xz;
-		  delta_sigma[p1].yy += delta_sigmap1.yy;
-		  delta_sigma[p1].yz += delta_sigmap1.yz;
-		  delta_sigma[p1].zz += delta_sigmap1.zz;
-		  const int th = omp_get_thread_num();
-		  if (visc>viscth[th*OMP_STRIDE])viscth[th*OMP_STRIDE] = visc;
-		  /*if (tvisco != VISCO_Artificial) {
-			  gradvel[p1].xx += gradvelp1.xx;
-			  gradvel[p1].xy += gradvelp1.xy;
-			  gradvel[p1].xz += gradvelp1.xz;
-			  gradvel[p1].yy += gradvelp1.yy;
-			  gradvel[p1].yz += gradvelp1.yz;
-			  gradvel[p1].zz += gradvelp1.zz;
-		  }*/
-		  if (shift)shiftposfs[p1] = shiftposfsp1;
-	  }
-  }
-  //-Keep max value in viscdt. | Guarda en viscdt el valor maximo.
-  for (int th = 0; th<OmpThreads; th++)if (viscdt<viscth[th*OMP_STRIDE])viscdt = viscth[th*OMP_STRIDE];
+						//-Acceleration Diffusion Term (Gray et al 2001) artificial stress	
+						const float epsilon = 0.3f;
+						const float n = 2.55f;
+						float fac1;
+						const float wab1 = fsph::GetKernel_WabFac<tker>(CSP, rr2, fac1);
+						const float f = pow(wab1*n, n);
+						//const float prs = epsilon*(pressp1 / (rhopp1*rhopp1) + pstress[p2] / (velrhop2.w*velrhop2.w)) *f;
+						const float prs = (tker == KERNEL_Cubic ? fsph::GetKernelCubic_Tensil(CSP, rr2, rhopp1, pressp1, velrhop2.w, pstress[p2]) : 0);
+						const float p_vpm = -prs*massp2;
+						acep1.x += p_vpm*frx; acep1.y += p_vpm*fry; acep1.z += p_vpm*frz;
+						/*tsymatrix3f stress_artificialp2 = rstress[p2];
+						tsymatrix3f stress_sum = { 0,0,0,0,0,0 };
+						if (boundp2)stress_artificialp2 = stress_artificialp1;
+						stress_sum.xx = stress_artificialp1.xx + stress_artificialp2.xx;	stress_sum.xy = stress_artificialp1.xy + stress_artificialp2.xy;	stress_sum.xz = stress_artificialp1.xz + stress_artificialp2.xz;
+						stress_sum.yy = stress_artificialp1.yy + stress_artificialp2.yy;	stress_sum.yz = stress_artificialp1.yz + stress_artificialp2.yz;
+						stress_sum.zz = stress_artificialp1.zz + stress_artificialp2.zz;
+
+						const float n = 2.55f;
+						float fac1;
+						const float wab1 = fsph::GetKernel_WabFac<tker>(CSP, rr2, fac1);
+						const float f = pow(wab1*n, n);
+						float stressx = (stress_sum.xx*frx + stress_sum.xy*fry + stress_sum.xz*frz) * f; // as per symetric tensor grad
+						float stressy = (stress_sum.xy*frx + stress_sum.yy*fry + stress_sum.yz*frz) * f;
+						float stressz = (stress_sum.xz*frx + stress_sum.yz*fry + stress_sum.zz*frz) * f;
+						//store artificial stress
+						acep1.x += stressx*massp2; acep1.y += stressy*massp2; acep1.z += stressz*massp2;*/
+					}
+					//-SPS turbulence model.
+					//-SPS turbulence model is disabled in v5.0 NN version
+					rsym = (rsymp1 && !rsym && float(posp1.y - dry) <= KernelSize); //<vs_syymmetry>
+					if (rsym)p2--;																									//<vs_syymmetry>
+				}
+				else rsym = false;																								//<vs_syymmetry>		
+			}
+		}
+		//-Sum results together. | Almacena resultados.
+		if (acep1.x || acep1.y || acep1.z) {
+			ace[p1] = ace[p1] + acep1;
+		}
+	}
 }
 
 //==============================================================================
-/// calculate velocity gradient (syymmetry)
+/// Perform calculations for NN using the SPH approach: Calculates the Artificial Pressure Tensor
+//==============================================================================
+template<TpFtMode ftmode, TpVisco tvisco> void JSphCpu::InteractionForcesFluid_NN_Artificial_Stress_tensor
+(unsigned n, unsigned pinit, float visco, float *visco_eta, tsymatrix3f *sigma, tsymatrix3f *sigmaS
+	, tsymatrix3f *rstress, float *pstress, const tsymatrix3f *D_tensor, float *auxnn, tfloat3 *cigma1, tfloat3 *cigma2
+	, const tfloat4 *velrhop, const tdouble3 *pos, const typecode *code, const unsigned *idp)const
+{
+	//-Initialise execution with OpenMP. | Inicia ejecucion con OpenMP.
+	const int pfin = int(pinit + n);
+#ifdef OMP_USE
+#pragma omp parallel for schedule (guided)
+#endif
+	for (int p1 = int(pinit); p1 < pfin; p1++) {
+
+		//-Obtain data of particle p1.
+		//const tdouble3 posp1 = pos[p1];
+		//const float rhopp1 = velrhop[p1].w;
+
+		//stress related to p1
+		tsymatrix3f sigma_tensorp1 = sigma[p1];
+		//const bool rsymp1 = (Symmetry && posp1.y <= KernelSize); //<vs_syymmetry>
+																 //const typecode pp1 = CODE_GetTypeValue(code[p1]);
+
+		float pressure_p1 = -(sigma_tensorp1.xx + sigma_tensorp1.yy + sigma_tensorp1.zz) / 3.f;
+		if (pressure_p1 > 0.f) pressure_p1 = -pressure_p1;
+
+		//store
+		pstress[p1] = pressure_p1;
+	}
+}
+
+//==============================================================================
+/// calculate velocity gradient (syymmetry) and solve continuity equation
 //==============================================================================
 template<TpKernel tker, TpFtMode ftmode, TpVisco tvisco, TpDensity tdensity, bool shift>
 void JSphCpu::InteractionForcesFluid_NN_EPmodel_VelGrad(unsigned n, unsigned pinit, bool boundp2, float visco
 	, StDivDataCpu divdata, const unsigned *dcell
-	, tsymatrix3f* gradvel, tsymatrix3f* sigma, tsymatrix3f* D_tensor
+	, tsymatrix3f* gradvel, tsymatrix3f* sigma, tsymatrix3f* D_tensor, tsymatrix3f* rstress
 	, const tdouble3 *pos, const tfloat4 *velrhop, const typecode *code, const unsigned *idp
 	, const float *press
 	, float &viscdt, float *ar, tfloat3 *ace, float *delta
@@ -1060,40 +1570,42 @@ void JSphCpu::InteractionForcesFluid_NN_EPmodel_VelGrad(unsigned n, unsigned pin
 #ifdef OMP_USE
 #pragma omp parallel for schedule (guided)
 #endif
-	for (int p1 = int(pinit); p1<pfin; p1++) {
-		//float visc = 0, arp1 = 0, deltap1 = 0;
-		//tfloat3 acep1 = TFloat3(0);
+	for (int p1 = int(pinit); p1 < pfin; p1++) {
+		float visc = 0, arp1 = 0, deltap1 = 0;
+		tfloat3 acep1 = TFloat3(0);
 		tsymatrix3f gradvelp1 = { 0,0,0,0,0,0 };
 		//-Variables for Shifting.
-		//tfloat4 shiftposfsp1;
-		//if (shift)shiftposfsp1 = shiftposfs[p1];
+		tfloat4 shiftposfsp1;
+		if (shift)shiftposfsp1 = shiftposfs[p1];
 
 		//-Obtain data of particle p1 in case of floating objects. | Obtiene datos de particula p1 en caso de existir floatings.
-		//bool ftp1 = false;     //-Indicate if it is floating. | Indica si es floating.
-		//if (USE_FLOATING) {
-		//	ftp1 = CODE_IsFloating(code[p1]);
-		//	if (ftp1 && tdensity != DDT_None)deltap1 = FLT_MAX; //-DDT is not applied to floating particles.
-		//	if (ftp1 && shift)shiftposfsp1.x = FLT_MAX;  //-For floating objects do not calculate shifting. | Para floatings no se calcula shifting.
-		//}
+		bool ftp1 = false;     //-Indicate if it is floating. | Indica si es floating.
+		if (USE_FLOATING) {
+			ftp1 = CODE_IsFloating(code[p1]);
+			if (ftp1 && tdensity != DDT_None)deltap1 = FLT_MAX; //-DDT is not applied to floating particles.
+			if (ftp1 && shift)shiftposfsp1.x = FLT_MAX;  //-For floating objects do not calculate shifting. | Para floatings no se calcula shifting.
+		}
 
 		//-Obtain data of particle p1.
 		const tdouble3 posp1 = pos[p1];
 		const tfloat3 velp1 = TFloat3(velrhop[p1].x, velrhop[p1].y, velrhop[p1].z);
 		const float rhopp1 = velrhop[p1].w;
 		//const float pressp1 = press[p1];
+		const tsymatrix3f sigma_tensorp1 = sigma[p1];
+		const tsymatrix3f stress_artificialp1 = rstress[p1];
 		const bool rsymp1 = (Symmetry && posp1.y <= KernelSize); //<vs_syymmetry>                                 
 																 //<vs_non-Newtonian>
 		const typecode pp1 = CODE_GetTypeValue(code[p1]);
 
 		//-Search for neighbours in adjacent cells.
 		const StNgSearch ngs = nsearch::Init(dcell[p1], boundp2, divdata);
-		for (int z = ngs.zini; z<ngs.zfin; z++)for (int y = ngs.yini; y<ngs.yfin; y++) {
+		for (int z = ngs.zini; z < ngs.zfin; z++)for (int y = ngs.yini; y < ngs.yfin; y++) {
 			const tuint2 pif = nsearch::ParticleRange(y, z, ngs, divdata);
 
 			//-Interaction of Fluid with type Fluid or Bound. | Interaccion de Fluid con varias Fluid o Bound.
 			//------------------------------------------------------------------------------------------------
 			bool rsym = false; //<vs_syymmetry>
-			for (unsigned p2 = pif.x; p2<pif.y; p2++) {
+			for (unsigned p2 = pif.x; p2 < pif.y; p2++) {
 				const float drx = float(posp1.x - pos[p2].x);
 				float dry = float(posp1.y - pos[p2].y);
 				if (rsym)    dry = float(posp1.y + pos[p2].y); //<vs_syymmetry>
@@ -1108,33 +1620,100 @@ void JSphCpu::InteractionForcesFluid_NN_EPmodel_VelGrad(unsigned n, unsigned pin
 					//<vs_non-Newtonian>
 					const typecode pp2 = (boundp2 ? pp1 : CODE_GetTypeValue(code[p2])); //<vs_non-Newtonian>
 					float massp2 = (boundp2 ? MassBound : PhaseArray[pp2].mass); //-Contiene masa de particula segun sea bound o fluid.
-																				 //Note if you masses are very different more than a ratio of 1.3 then: massp2 = (boundp2 ? PhaseArray[pp1].mass : PhaseArray[pp2].mass);
+					//Note if you masses are very different more than a ratio of 1.3 then: massp2 = (boundp2 ? PhaseArray[pp1].mass : PhaseArray[pp2].mass);
 
-																				 //Floating                      
-//					bool ftp2 = false;    //-Indicate if it is floating | Indica si es floating.
+					//Floating                      
+					bool ftp2 = false;    //-Indicate if it is floating | Indica si es floating.
 					bool compute = true;  //-Deactivate when using DEM and if it is of type float-float or float-bound | Se desactiva cuando se usa DEM y es float-float o float-bound.
-//					if (USE_FLOATING) {
-//						ftp2 = CODE_IsFloating(code[p2]);
-//						if (ftp2)massp2 = FtObjs[CODE_GetTypeValue(code[p2])].massp;
-//#ifdef DELTA_HEAVYFLOATING
-//						if (ftp2 && tdensity == DDT_DDT && massp2 <= (MassFluid*1.2f))deltap1 = FLT_MAX;
-//#else
-//						if (ftp2 && tdensity == DDT_DDT)deltap1 = FLT_MAX;
-//#endif
-//						if (ftp2 && shift && shiftmode == SHIFT_NoBound)shiftposfsp1.x = FLT_MAX; //-With floating objects do not use shifting. | Con floatings anula shifting.
-//						compute = !(USE_FTEXTERNAL && ftp1 && (boundp2 || ftp2)); //-Deactivate when using DEM and if it is of type float-float or float-bound. | Se desactiva cuando se usa DEM y es float-float o float-bound.
-//					}
+					if (USE_FLOATING) {
+						ftp2 = CODE_IsFloating(code[p2]);
+						if (ftp2)massp2 = FtObjs[CODE_GetTypeValue(code[p2])].massp;
+#ifdef DELTA_HEAVYFLOATING
+						if (ftp2 && tdensity == DDT_DDT && massp2 <= (MassFluid*1.2f))deltap1 = FLT_MAX;
+#else
+						if (ftp2 && tdensity == DDT_DDT)deltap1 = FLT_MAX;
+#endif
+						if (ftp2 && shift && shiftmode == SHIFT_NoBound)shiftposfsp1.x = FLT_MAX; //-With floating objects do not use shifting. | Con floatings anula shifting.
+						compute = !(USE_FTEXTERNAL && ftp1 && (boundp2 || ftp2)); //-Deactivate when using DEM and if it is of type float-float or float-bound. | Se desactiva cuando se usa DEM y es float-float o float-bound.
+					}
 
 					tfloat4 velrhop2 = velrhop[p2];
 					if (rsym)velrhop2.y = -velrhop2.y; //<vs_syymmetry>
+
+					//===== Acceleration ===== 
+					if (compute) {
+						tsymatrix3f sigma_tensorp2 = sigma[p2];
+						tsymatrix3f sigma_sum = { 0,0,0,0,0,0 };
+						if (boundp2)sigma_tensorp2 = sigma_tensorp1;
+						sigma_sum.xx = sigma_tensorp1.xx + sigma_tensorp2.xx;	sigma_sum.xy = sigma_tensorp1.xy + sigma_tensorp2.xy;	sigma_sum.xz = sigma_tensorp1.xz + sigma_tensorp2.xz;
+						sigma_sum.yy = sigma_tensorp1.yy + sigma_tensorp2.yy;	sigma_sum.yz = sigma_tensorp1.yz + sigma_tensorp2.yz;
+						sigma_sum.zz = sigma_tensorp1.zz + sigma_tensorp2.zz;
+
+						float sigmax = (sigma_sum.xx*frx + sigma_sum.xy*fry + sigma_sum.xz*frz) / (rhopp1*velrhop2.w); // as per symetric tensor grad
+						float sigmay = (sigma_sum.xy*frx + sigma_sum.yy*fry + sigma_sum.yz*frz) / (rhopp1*velrhop2.w);
+						float sigmaz = (sigma_sum.xz*frx + sigma_sum.yz*fry + sigma_sum.zz*frz) / (rhopp1*velrhop2.w);
+						//add stresses (sigma) into acelaration
+						acep1.x += sigmax*massp2; acep1.y += sigmay*massp2; acep1.z += sigmaz*massp2;
+					}
+
+					//-Acceleration Diffusion Term (Gray et al 2001) artificial stress				
+					/*tsymatrix3f stress_artificialp2 = rstress[p2];
+					tsymatrix3f stress_sum = { 0,0,0,0,0,0 };
+					if (boundp2)stress_artificialp2 = stress_artificialp1;
+					stress_sum.xx = stress_artificialp1.xx + stress_artificialp2.xx;	stress_sum.xy = stress_artificialp1.xy + stress_artificialp2.xy;	stress_sum.xz = stress_artificialp1.xz + stress_artificialp2.xz;
+					stress_sum.yy = stress_artificialp1.yy + stress_artificialp2.yy;	stress_sum.yz = stress_artificialp1.yz + stress_artificialp2.yz;
+					stress_sum.zz = stress_artificialp1.zz + stress_artificialp2.zz;
+
+					const float n = 2.55f;
+					float fac1;
+					const float wab1 = fsph::GetKernel_WabFac<tker>(CSP, rr2, fac1);
+					const float f = pow(wab1*n, n);
+					float stressx = (stress_sum.xx*frx + stress_sum.xy*fry + stress_sum.xz*frz) * f; // as per symetric tensor grad
+					float stressy = (stress_sum.xy*frx + stress_sum.yy*fry + stress_sum.yz*frz) * f;
+					float stressz = (stress_sum.xz*frx + stress_sum.yz*fry + stress_sum.zz*frz) * f;
+
+					acep1.x += stressx*massp2; acep1.y += stressy*massp2; acep1.z += stressz*massp2;*/
+
+					//-Density derivative.
+					const float rhop1over2 = rhopp1 / velrhop2.w;
 					float dvx = velp1.x - velrhop2.x, dvy = velp1.y - velrhop2.y, dvz = velp1.z - velrhop2.z;
+					if (compute)arp1 += massp2*(dvx*frx + dvy*fry + dvz*frz)*rhop1over2;
 
+					const float cbar = max(PhaseArray[pp2].Cs0, PhaseArray[pp2].Cs0); //<vs_non-Newtonian>
+																					  //-Density Diffusion Term (DeltaSPH Molteni).
+					if (tdensity == DDT_DDT && deltap1 != FLT_MAX) {
+						const float visc_densi = DDTkh*cbar*(rhop1over2 - 1.f) / (rr2 + Eta2);
+						const float dot3 = (drx*frx + dry*fry + drz*frz);
+						const float delta = (pp1 == pp2 ? visc_densi*dot3*massp2 : 0); //<vs_non-Newtonian>
+																					   //deltap1 = (boundp2 ? FLT_MAX : deltap1 + delta);
+						deltap1 = (boundp2 && TBoundary == BC_DBC ? FLT_MAX : deltap1 + delta);
+					}
+					//-Density Diffusion Term (Fourtakas et al 2019).  //<vs_dtt2_ini>
+					if ((tdensity == DDT_DDT2 || (tdensity == DDT_DDT2Full && !boundp2)) && deltap1 != FLT_MAX && !ftp2) {
+						const float rh = 1.f + DDTgz*drz;
+						const float drhop = RhopZero*pow(rh, 1.f / Gamma) - RhopZero;
+						const float visc_densi = DDTkh*cbar*((velrhop2.w - rhopp1) - drhop) / (rr2 + Eta2);
+						const float dot3 = (drx*frx + dry*fry + drz*frz);
+						const float delta = (pp1 == pp2 ? visc_densi*dot3*massp2 / velrhop2.w : 0); //<vs_non-Newtonian>
+						deltap1 = (boundp2 ? FLT_MAX : deltap1 - delta);
+					}  //<vs_dtt2_end>
 
-					//===== Viscosity ===== 
+					   //-Shifting correction.
+					if (shift && shiftposfsp1.x != FLT_MAX) {
+						bool heavyphase = (PhaseArray[pp1].mass > PhaseArray[pp2].mass && pp1 != pp2 ? true : false);
+						const float massrhop = massp2 / velrhop2.w;
+						const bool noshift = (boundp2 && (shiftmode == SHIFT_NoBound || (shiftmode == SHIFT_NoFixed && CODE_IsFixed(code[p2]))));
+						shiftposfsp1.x = (noshift ? FLT_MAX : (heavyphase ? 0 : shiftposfsp1.x + massrhop*frx)); //-For boundary do not use shifting. | Con boundary anula shifting.                            
+						shiftposfsp1.y += (heavyphase ? 0 : massrhop*fry); //<vs_non-Newtonian>
+						shiftposfsp1.z += (heavyphase ? 0 : massrhop*frz); //<vs_non-Newtonian>
+						shiftposfsp1.w -= (heavyphase ? 0 : massrhop*(drx*frx + dry*fry + drz*frz)); //<vs_non-Newtonian>
+					}
+
+					//===== vel gradient ===== 
 					if (compute) {
 						const float dot = drx*dvx + dry*dvy + drz*dvz;
 						const float dot_rr2 = dot / (rr2 + Eta2);
-						//visc = max(dot_rr2, visc);
+						visc = max(dot_rr2, visc);
 						if (tvisco != VISCO_Artificial) { //<vs_non-Newtonian>
 							{//vel gradients
 								if (boundp2) {
@@ -1151,51 +1730,171 @@ void JSphCpu::InteractionForcesFluid_NN_EPmodel_VelGrad(unsigned n, unsigned pin
 			}
 		}
 		//-Sum results together. | Almacena resultados.
-		if (tvisco != VISCO_Artificial) {
-			gradvel[p1].xx += gradvelp1.xx;
-			gradvel[p1].xy += gradvelp1.xy;
-			gradvel[p1].xz += gradvelp1.xz;
-			gradvel[p1].yy += gradvelp1.yy;
-			gradvel[p1].yz += gradvelp1.yz;
-			gradvel[p1].zz += gradvelp1.zz;
+		if (shift || arp1 || acep1.x || acep1.y || acep1.z || visc) {
+			if (tdensity != DDT_None) {
+				if (delta)delta[p1] = (delta[p1] == FLT_MAX || deltap1 == FLT_MAX ? FLT_MAX : delta[p1] + deltap1);
+				else if (deltap1 != FLT_MAX)arp1 += deltap1;
+			}
+			ar[p1] += arp1;
+			ace[p1] = ace[p1] + acep1;
+			const int th = omp_get_thread_num();
+			if (visc > viscth[th*OMP_STRIDE])viscth[th*OMP_STRIDE] = visc;
+			if (tvisco != VISCO_Artificial) {
+				gradvel[p1].xx += gradvelp1.xx;
+				gradvel[p1].xy += gradvelp1.xy;
+				gradvel[p1].xz += gradvelp1.xz;
+				gradvel[p1].yy += gradvelp1.yy;
+				gradvel[p1].yz += gradvelp1.yz;
+				gradvel[p1].zz += gradvelp1.zz;
+			}
+			if (shift)shiftposfs[p1] = shiftposfsp1;
 		}
 	}
 	//-Keep max value in viscdt. | Guarda en viscdt el valor maximo.
-	//for (int th = 0; th<OmpThreads; th++)if (viscdt<viscth[th*OMP_STRIDE])viscdt = viscth[th*OMP_STRIDE];
+	for (int th = 0; th<OmpThreads; th++)if (viscdt<viscth[th*OMP_STRIDE])viscdt = viscth[th*OMP_STRIDE];
+}
+
+//==============================================================================
+/// Perform calculations for NN using the SPH approach: yield calculation. if yield, add plastic stress
+//==============================================================================
+template<TpFtMode ftmode, TpVisco tvisco> void JSphCpu::InteractionForcesFluid_NN_DruckerPrager
+(unsigned n, unsigned pinit, float visco, float *visco_eta, tsymatrix3f *sigma, tsymatrix3f *sigmaS
+	, tsymatrix3f *tau, const tsymatrix3f *D_tensor, float *auxnn, tfloat3 *cigma1, tfloat3 *cigma2
+	, const tdouble3 *pos, const typecode *code, const unsigned *idp)const
+{
+	//-Initialise execution with OpenMP. | Inicia ejecucion con OpenMP.
+	const int pfin = int(pinit + n);
+#ifdef OMP_USE
+#pragma omp parallel for schedule (guided)
+#endif
+	for (int p1 = int(pinit); p1<pfin; p1++) {
+
+		//-Obtain data of particle p1.
+		const tdouble3 posp1 = pos[p1];
+
+		//stress related to p1
+		const float visco_etap1 = visco_eta[p1];
+		//const tsymatrix3f D_tensorp1 = D_tensor[p1];
+		//const float div3_D_tensorp1 = D_tensor[p1].xx + D_tensor[p1].yy + D_tensor[p1].zz;
+		tsymatrix3f t_sigma_tensorp1 = sigma[p1];
+		const bool rsymp1 = (Symmetry && posp1.y <= KernelSize); //<vs_syymmetry>
+		const typecode pp1 = CODE_GetTypeValue(code[p1]);
+
+		//setup stress related variables
+		//tsymatrix3f sigmaS_tensorp1 = { 0,0,0,0,0,0 }; float sigmaS_tensor_magn = 0.f; //store deviatoric stress
+		//float I_t, II_t = 0.f; float J1_t, J2_t = 0.f;
+		//float I_1, J_2 = 0.f;
+		//GetSigmaInvariant_sym(sigma_tensorp1, I_1, J_2, I_t, II_t, J1_t, J2_t, sigmaS_tensor_magn, sigmaS_tensorp1);
+
+		float DP_phi = PhaseCte[pp1].DP_phi; float DP_cohes = PhaseCte[pp1].DP_cohes;
+		const float phi = float(DP_phi*(TORAD));
+		const float tan_phi = tan(phi);
+		const float coef = sqrt(9.f + 12.f * tan_phi*tan_phi);
+		const float alpha_phi = tan_phi / coef; //coefficient of DP criteria      
+		const float kc = 3.f*DP_cohes / coef;  //coefficient of DP criteria 
+	    /*float yield_value0 = 0.f;  //value of yield function
+		GetYieldDruckerPrager(sigma_tensorp1, alpha_phi, kc, yield_value0);
+
+		//if it yields, correct stress tensor
+		if (yield_value_0 > 0.f) {
+		ModifyStressOfDruckerPrager(I_1, J_2, alpha_phi, kc, sigma_tensorp1,sigmaS_tensorp1,yield_value_0);
+		}
+
+		//compute elastic stress and add into the stress from the previous time step
+		tsymatrix3f delta_sigma_tensorp1 = { 0,0,0,0,0,0 }; float delta_sigma_tensor_magn = 0.f;
+		float E = PhaseCte[pp1].E; float mu = PhaseCte[pp1].mu;
+		//float DP_phi = PhaseCte[pp1].DP_phi; float DP_cohes = PhaseCte[pp1].DP_cohes;
+		float I_t, II_t = 0.f; float J1_t, J2_t = 0.f;
+		//add elastic matrix
+		GetDeltaSigma_elastic(D_tensorp1, sigma_tensorp1, E, mu, I_t, II_t, J1_t, J2_t, delta_sigma_tensor_magn, delta_sigma_tensorp1);*/
+
+		float yield_value1 = 0.f;  //value of yield function
+		GetYieldDruckerPrager(t_sigma_tensorp1, alpha_phi, kc, yield_value1);
+
+		float E = PhaseCte[pp1].E; float mu = PhaseCte[pp1].mu;
+		//correct delta_sigma stress tensor
+		if (yield_value1 > 1e-5f) {
+			int iter = 0;
+			while (abs(yield_value1) > 1e-5f) {
+				if (iter++ > 80) break;
+				const float G = 0.5f*E / (1 + mu);
+				const float K = E / (1 - 2.f*mu) / 3.f;  //bulk modulus
+				float DP_psi = PhaseCte[pp1].DP_psi;
+				const float psi = float(DP_psi*(TORAD));
+				const float tan_psi = tan(psi);
+				const float coef0 = sqrt(9.f + 12.f * tan_psi*tan_psi);
+				const float k_psi = 3.f*tan_psi / coef0;
+				float lambda = yield_value1 / (G + K*3.f*alpha_phi*k_psi);
+				tsymatrix3f t_sigmaS_tensorp1 = { 0,0,0,0,0,0 };
+				float dI_1, dJ_2 = 0.f;
+				GetSigmaInvariant_sym(t_sigma_tensorp1, dI_1, dJ_2, t_sigmaS_tensorp1);
+				t_sigma_tensorp1.xx = t_sigma_tensorp1.xx - lambda*(G / sqrt(dJ_2)*t_sigmaS_tensorp1.xx + K*k_psi);
+				t_sigma_tensorp1.yy = t_sigma_tensorp1.yy - lambda*(G / sqrt(dJ_2)*t_sigmaS_tensorp1.yy + K*k_psi);
+				t_sigma_tensorp1.zz = t_sigma_tensorp1.zz - lambda*(G / sqrt(dJ_2)*t_sigmaS_tensorp1.zz + K*k_psi);
+				t_sigma_tensorp1.xy = t_sigma_tensorp1.xy - lambda*(G / sqrt(dJ_2)*t_sigmaS_tensorp1.xy);
+				t_sigma_tensorp1.xz = t_sigma_tensorp1.xz - lambda*(G / sqrt(dJ_2)*t_sigmaS_tensorp1.xz);
+				t_sigma_tensorp1.yz = t_sigma_tensorp1.yz - lambda*(G / sqrt(dJ_2)*t_sigmaS_tensorp1.yz);
+				GetYieldDruckerPrager(t_sigma_tensorp1, alpha_phi, kc, yield_value1);
+				//store accumulated deviatoric plastic strain, because k_psi=0
+				cigma1[p1].x += lambda*(0.5f / sqrt(dJ_2)*t_sigmaS_tensorp1.xx + K*k_psi / (G*2.f));
+				cigma1[p1].y += lambda*(0.5f / sqrt(dJ_2)*t_sigmaS_tensorp1.yy + K*k_psi / (G*2.f));
+				cigma1[p1].z += lambda*(0.5f / sqrt(dJ_2)*t_sigmaS_tensorp1.zz + K*k_psi / (G*2.f));
+				cigma2[p1].x += lambda*(0.5f / sqrt(dJ_2)*t_sigmaS_tensorp1.xy);
+				cigma2[p1].y += lambda*(0.5f / sqrt(dJ_2)*t_sigmaS_tensorp1.xz);
+				cigma2[p1].z += lambda*(0.5f / sqrt(dJ_2)*t_sigmaS_tensorp1.yz);
+			}
+		}
+
+		//-Sum results together. | Almacena resultados.
+		sigma[p1].xx = t_sigma_tensorp1.xx;
+		sigma[p1].yy = t_sigma_tensorp1.yy;
+		sigma[p1].zz = t_sigma_tensorp1.zz;
+		sigma[p1].xy = t_sigma_tensorp1.xy;
+		sigma[p1].xz = t_sigma_tensorp1.xz;
+		sigma[p1].yz = t_sigma_tensorp1.yz;
+		//auxnn[p1] = yield_value1;
+	}
 }
 
 //==============================================================================
 /// interaction using EPmodel
 //==============================================================================
-template<TpKernel tker, TpFtMode ftmode, TpVisco tvisco, TpDensity tdensity, bool shift>
+template<TpKernel tker, TpFtMode ftmode, TpVisco tvisco, TpDensity tdensity, TpAcceleration tacceleration, bool shift>
 void JSphCpu::Interaction_ForcesCpuT_NN_EPmodel(const stinterparmsc &t, StInterResultc &res)const
 {
 	float viscdt = res.viscdt;
 	float viscetadt = res.viscetadt;
 	if (t.npf) {
+		//judge if it yields
+		InteractionForcesFluid_NN_DruckerPrager<ftmode, tvisco>(t.npf, t.npb, Visco
+			, t.visco_eta, t.sigma, t.sigmaS, t.spstau, t.d_tensor, t.auxnn, t.cigma1, t.cigma2, t.pos, t.code, t.idp); 
 		//Pressure gradient, velocity gradients (symetric)
 		//-Interaction Fluid-Fluid.
 		InteractionForcesFluid_NN_EPmodel_VelGrad<tker, ftmode, tvisco, tdensity, shift>(t.npf, t.npb, false, Visco
-			, t.divdata, t.dcell, t.spsgradvel, t.sigma, t.d_tensor, t.pos, t.velrhop, t.code, t.idp, t.press
+			, t.divdata, t.dcell, t.spsgradvel, t.sigma, t.d_tensor, t.rstress, t.pos, t.velrhop, t.code, t.idp, t.press
 			, viscdt, t.ar, t.ace, t.delta, t.shiftmode, t.shiftposfs);
 		//-Interaction Fluid-Bound.
 		InteractionForcesFluid_NN_EPmodel_VelGrad<tker, ftmode, tvisco, tdensity, shift>(t.npf, t.npb, true, Visco*ViscoBoundFactor
-			, t.divdata, t.dcell, t.spsgradvel, t.sigma, t.d_tensor, t.pos, t.velrhop, t.code, t.idp, t.press
+			, t.divdata, t.dcell, t.spsgradvel, t.sigma, t.d_tensor, t.rstress, t.pos, t.velrhop, t.code, t.idp, t.press
 			, viscdt, t.ar, t.ace, t.delta, t.shiftmode, t.shiftposfs);
+
+		if (tacceleration == ADT_Artificial) {
+			//compute artificial stress tensor
+			InteractionForcesFluid_NN_Artificial_Stress_tensor<ftmode, tvisco>(t.npf, t.npb, Visco
+				, t.visco_eta, t.sigma, t.sigmaS, t.rstress, t.pstress, t.d_tensor, t.auxnn, t.cigma1, t.cigma2, t.velrhop, t.pos, t.code, t.idp);
+			//-Compute viscous terms and add them to the acceleration
+			InteractionForcesFluid_NN_Tensile_instability<tker, ftmode, tvisco, tacceleration, shift>(t.npf, t.npb, false, Visco
+				, t.divdata, t.dcell, t.visco_eta, t.spstau, t.auxnn, t.rstress, t.pstress, t.pos, t.velrhop, t.code, t.idp, t.ace);
+			//-Interaction Fluid-Bound.
+			InteractionForcesFluid_NN_Tensile_instability<tker, ftmode, tvisco, tacceleration, shift>(t.npf, t.npb, true, Visco*ViscoBoundFactor
+				, t.divdata, t.dcell, t.visco_eta, t.spstau, t.auxnn, t.rstress, t.pstress, t.pos, t.velrhop, t.code, t.idp, t.ace);
+		}
 		
 		if (tvisco != VISCO_Artificial) {
 			//Build strain rate tensor  //what will happen here for boundary particles?
-			InteractionForcesFluid_NN_EPmodel_Visco_eta<ftmode, tvisco>(t.npf, t.npb, Visco
-				, t.visco_eta, t.velrhop, t.spsgradvel, t.d_tensor, t.auxnn, viscetadt, t.pos, t.press, t.code, t.idp);
+			InteractionForcesFluid_NN_EP_Elastic_Visco_eta<ftmode, tvisco>(t.npf, t.npb, Visco
+				, t.visco_eta, t.velrhop, t.spsgradvel, t.d_tensor, t.auxnn, viscetadt, t.epsilon1, t.epsilon2, t.pos, t.press, t.code, t.idp);
 		}
-		//-Interaction Fluid-Fluid.
-		InteractionForcesFluid_NN_EPmodel_PressGrad<tker, ftmode, tvisco, tdensity, shift>(t.npf, t.npb, false, Visco
-			, t.divdata, t.dcell, t.spsgradvel, t.sigma, t.delta_sigma, t.d_tensor, t.pos, t.velrhop, t.code, t.idp, t.press
-			, viscdt, t.ar, t.ace, t.delta, t.shiftmode, t.shiftposfs);
-		//-Interaction Fluid-Bound.
-		InteractionForcesFluid_NN_EPmodel_PressGrad<tker, ftmode, tvisco, tdensity, shift>(t.npf, t.npb, true, Visco*ViscoBoundFactor
-			, t.divdata, t.dcell, t.spsgradvel, t.sigma, t.delta_sigma, t.d_tensor, t.pos, t.velrhop, t.code, t.idp, t.press
-			, viscdt, t.ar, t.ace, t.delta, t.shiftmode, t.shiftposfs);
 
 		if (tvisco != VISCO_ConstEq) {
 			//Morris
@@ -1204,6 +1903,18 @@ void JSphCpu::Interaction_ForcesCpuT_NN_EPmodel(const stinterparmsc &t, StInterR
 			//-Interaction Fluid-Bound.     
 			InteractionForcesFluid_NN_SPH_Morris<tker, ftmode, tvisco, tdensity, shift>(t.npf, t.npb, true, Visco*ViscoBoundFactor
 				, t.divdata, t.dcell, t.visco_eta, t.spstau, t.spsgradvel, t.auxnn, t.pos, t.velrhop, t.code, t.idp, t.ace);
+		}
+		else {
+			//Morris  ----artificial 
+			InteractionForcesFluid_NN_EPmodel_Morris<tker, ftmode, tvisco, tdensity, shift>(t.npf, t.npb, false, Visco
+				, t.divdata, t.dcell, t.visco_eta, t.spstau, t.spsgradvel, t.auxnn, t.pos, t.velrhop, t.code, t.idp, t.ace);
+			//-Interaction Fluid-Bound.     
+			InteractionForcesFluid_NN_EPmodel_Morris<tker, ftmode, tvisco, tdensity, shift>(t.npf, t.npb, true, Visco*ViscoBoundFactor
+				, t.divdata, t.dcell, t.visco_eta, t.spstau, t.spsgradvel, t.auxnn, t.pos, t.velrhop, t.code, t.idp, t.ace);
+			//-ConsEq;
+			// Build strain rate tensor and compute eta_visco //what will happen here for boundary particles?
+			InteractionForcesFluid_NN_EPmodel_Stress_tensor<ftmode, tvisco>(t.npf, t.npb, Visco
+				, t.visco_eta, t.sigma, t.sigmaS, t.spstau, t.d_tensor, t.auxnn, t.cigma1, t.cigma2, t.pos, t.code, t.idp);
 		}
 		
 		//-Interaction of DEM Floating-Bound & Floating-Floating. //(DEM)

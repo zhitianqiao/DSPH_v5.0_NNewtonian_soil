@@ -114,14 +114,16 @@ void JSphCpu::GetStrainRateTensor(const tmatrix3f &dvelp1,float div_vel,float &I
 //==============================================================================
 /// Calculates the effective visocity
 //==============================================================================
-void JSphCpu::GetEta_Effective(int p1, const typecode ppx,float tau_yield,float MC_fai, float Cohes, const float pressp1, float D_tensor_magn,float visco
+void JSphCpu::GetEta_Effective(int p1, const typecode ppx,float tau_yield,float DP_phi, float DP_cohes, const float pressp1, float D_tensor_magn,float visco
   ,float m_NN,float n_NN,float &visco_etap1)const
 {
-	const float hudu_fai = float(MC_fai*(TORAD));
+	const float hudu_fai = float(DP_phi*(TORAD));
 	const float sin_fai = sin(hudu_fai);
 	const float cos_fai = cos(hudu_fai);
   if(D_tensor_magn<=ALMOSTZERO)D_tensor_magn=ALMOSTZERO;
-  float miou_yield=(PhaseCte[ppx].tau_max ? PhaseCte[ppx].tau_max/(2.0f*D_tensor_magn) : (tau_yield+ fabs(pressp1) /1295*sin_fai+Cohes*cos_fai)/(2.0f*D_tensor_magn)); //HPB will adjust eta		
+  
+  float miou_yield = (PhaseCte[ppx].tau_max ? PhaseCte[ppx].tau_max / (2.0f*D_tensor_magn) : tau_yield / (2.0f*D_tensor_magn)); //HPB will adjust eta	
+  //float miou_yield = (PhaseCte[ppx].tau_max ? PhaseCte[ppx].tau_max / (2.0f*D_tensor_magn) : (tau_yield + fabs(pressp1) / 1295 * sin_fai + DP_cohes*cos_fai) / (2.0f*D_tensor_magn)); //HPB will adjust eta
 
   //if tau_max exists
   bool bi_region=PhaseCte[ppx].tau_max && D_tensor_magn<=PhaseCte[ppx].tau_max/(2.f*PhaseCte[ppx].Bi_multi*visco);
@@ -130,12 +132,14 @@ void JSphCpu::GetEta_Effective(int p1, const typecode ppx,float tau_yield,float 
   }
   //Papanastasiou
   float miouPap=miou_yield *(1.f-exp(-m_NN*D_tensor_magn));
-  float visco_etap1_term1=(PhaseCte[ppx].tau_max ? miou_yield : (miouPap>m_NN*(tau_yield + fabs(pressp1) /1295 * sin_fai + Cohes*cos_fai)||D_tensor_magn==ALMOSTZERO ? m_NN*(tau_yield + fabs(pressp1) /1295 * sin_fai + Cohes*cos_fai) : miouPap));
+  float visco_etap1_term1=(PhaseCte[ppx].tau_max ? miou_yield : (miouPap>m_NN*tau_yield||D_tensor_magn==ALMOSTZERO ? m_NN*tau_yield : miouPap));
+  //float visco_etap1_term1 = (PhaseCte[ppx].tau_max ? miou_yield : (miouPap>m_NN*(tau_yield + fabs(pressp1) / 1295 * sin_fai + DP_cohes*cos_fai) || D_tensor_magn == ALMOSTZERO ? m_NN*(tau_yield + fabs(pressp1) / 1295 * sin_fai + DP_cohes*cos_fai) : miouPap));
 
   //HB
   float miouHB=visco*pow(D_tensor_magn,(n_NN-1.0f));
   //float visco_etap1_term2 = visco;// (miouPap > m_NN*tau_yield ? visco : miouHB);
-  float visco_etap1_term2=(bi_region ? visco : (miouPap>m_NN*(tau_yield + fabs(pressp1) /1295 * sin_fai + Cohes*cos_fai) ||D_tensor_magn==ALMOSTZERO ? visco : miouHB));
+  float visco_etap1_term2=(bi_region ? visco : (miouPap>m_NN*tau_yield ||D_tensor_magn==ALMOSTZERO ? visco : miouHB));
+  //float visco_etap1_term2 = (bi_region ? visco : (miouPap>m_NN*(tau_yield + fabs(pressp1) / 1295 * sin_fai + DP_cohes*cos_fai) || D_tensor_magn == ALMOSTZERO ? visco : miouHB));
 
   visco_etap1=visco_etap1_term1+visco_etap1_term2; //effective viscosity (Ueff) contians two parts    // term2 is Bingham viscosity (uB)
   
@@ -236,14 +240,188 @@ void JSphCpu::GetStressTensor_sym(const tsymatrix3f &D_tensorp1,float visco_etap
 
 //end_of_file
 
+//==============================================================================
+/// Calculates the Strain Rate Tensor (symetric) -Soil
+//==============================================================================
+void JSphCpu::GetStrainRateTensor_tsym_Soil(const tsymatrix3f &dvelp1, float &I_D, float &II_D, float &J1_D, float &J2_D, float &div_D_tensor, float &D_tensor_magn, tsymatrix3f &D_tensor)const
+{
+	//Strain tensor and invariant
+	float div_vel = (dvelp1.xx + dvelp1.yy + dvelp1.zz) / 3.f;
+	D_tensor.xx = dvelp1.xx;      D_tensor.xy = 0.5f*(dvelp1.xy);     D_tensor.xz = 0.5f*(dvelp1.xz);
+	D_tensor.yy = dvelp1.yy;  D_tensor.yz = 0.5f*(dvelp1.yz);
+	D_tensor.zz = dvelp1.zz;
+	//the off-diagonal entries of velocity gradients are i.e. 0.5f*(du/dy+dvdx) with dvelp1.xy=du/dy+dvdx
+	div_D_tensor = (D_tensor.xx + D_tensor.yy + D_tensor.zz) / 3.f;
+
+	//I_D - the first invariant -
+	I_D = D_tensor.xx + D_tensor.yy + D_tensor.zz;
+	//II_D - the second invariant - expnaded form witout symetry 
+	float II_D_1 = D_tensor.xx*D_tensor.yy + D_tensor.yy*D_tensor.zz + D_tensor.xx*D_tensor.zz;
+	float II_D_2 = D_tensor.xy*D_tensor.xy + D_tensor.yz*D_tensor.yz + D_tensor.xz*D_tensor.xz;
+	II_D = -II_D_1 + II_D_2;
+	////deformation tensor magnitude
+	D_tensor_magn = sqrt((II_D));
+	/*if (II_D<0.f) {
+		printf("****D_tensor_magn is negative**** \n");
+	}*/
+	//Main Strain rate invariants
+	J1_D = I_D; J2_D = I_D*I_D - 2.f*II_D;
+}
+
+//==============================================================================
+/// Calculates the Elastic Stress Tensor (symetric)
+//==============================================================================
+void JSphCpu::GetStressTensor_sym_Elastic(const tsymatrix3f &D_tensorp1, float E, float mu, float &I_t, float &II_t, float &J1_t, float &J2_t, float &tau_tensor_magn, tsymatrix3f &tau_tensorp1)const
+{
+	const float G = 0.5f*E / (1 + mu);
+	const float lame = mu*E / (1 - 2.f* mu)/(1+mu);
+	float div_strain = D_tensorp1.xx + D_tensorp1.yy + D_tensorp1.zz;
+	//Stress tensor and invariant
+	tau_tensorp1.xx = 2.f*G*(D_tensorp1.xx) + lame*div_strain;  tau_tensorp1.xy = 2.f*G*D_tensorp1.xy;    tau_tensorp1.xz = 2.f*G*D_tensorp1.xz;
+	tau_tensorp1.yy = 2.f*G*(D_tensorp1.yy) + lame*div_strain;  tau_tensorp1.yz = 2.f*G*D_tensorp1.yz;
+	tau_tensorp1.zz = 2.f*G*(D_tensorp1.zz) + lame*div_strain;
+	//I_t - the first invariant -
+	I_t = tau_tensorp1.xx + tau_tensorp1.yy + tau_tensorp1.zz;
+	//II_t - the second invariant - expnaded form witout symetry 
+	float II_t_1 = tau_tensorp1.xx*tau_tensorp1.yy + tau_tensorp1.yy*tau_tensorp1.zz + tau_tensorp1.xx*tau_tensorp1.zz;
+	float II_t_2 = tau_tensorp1.xy*tau_tensorp1.xy + tau_tensorp1.yz*tau_tensorp1.yz + tau_tensorp1.xz*tau_tensorp1.xz;
+	II_t = -II_t_1 + II_t_2;
+	//stress tensor magnitude
+	tau_tensor_magn = sqrt(II_t);
+	/*if (II_t<0.f) {
+		printf("****tau_tensor_magn is negative**** \n");
+	}*/
+	//Main Stress rate invariants
+	J1_t = I_t; J2_t = I_t*I_t - 2.f*II_t;
+}
+
+//add elastic matrix
+//==============================================================================
+/*void JSphCpu::GetDeltaSigma_elastic(const tsymatrix3f &D_tensorp1, tsymatrix3f &sigma_tensorp1, float E, float mu, float &I_t, float &II_t, float &J1_t, float &J2_t, float &delta_sigma_tensor_magn, tsymatrix3f &delta_sigma_tensorp1)const
+{
+	const float G = 0.5f*E / (1 + mu);
+	const float lame = mu*E / (1 - 2.f* mu) / (1 + mu);
+	float div_strain = D_tensorp1.xx + D_tensorp1.yy + D_tensorp1.zz;
+	//Stress tensor and invariant
+	delta_sigma_tensorp1.xx = 2.f*G*D_tensorp1.xx + lame*div_strain;  delta_sigma_tensorp1.xy = 2.f*G*D_tensorp1.xy;    delta_sigma_tensorp1.xz = 2.f*G*D_tensorp1.xz;
+	delta_sigma_tensorp1.yy = 2.f*G*D_tensorp1.yy + lame*div_strain;  delta_sigma_tensorp1.yz = 2.f*G*D_tensorp1.yz;
+	delta_sigma_tensorp1.zz = 2.f*G*D_tensorp1.zz + lame*div_strain;
+	//I_t - the first invariant -
+	I_t = delta_sigma_tensorp1.xx + delta_sigma_tensorp1.yy + delta_sigma_tensorp1.zz;
+	//II_t - the second invariant - expnaded form witout symetry 
+	float II_t_1 = delta_sigma_tensorp1.xx*delta_sigma_tensorp1.yy + delta_sigma_tensorp1.yy*delta_sigma_tensorp1.zz + delta_sigma_tensorp1.xx*delta_sigma_tensorp1.zz;
+	float II_t_2 = delta_sigma_tensorp1.xy*delta_sigma_tensorp1.xy + delta_sigma_tensorp1.yz*delta_sigma_tensorp1.yz + delta_sigma_tensorp1.xz*delta_sigma_tensorp1.xz;
+	II_t = -II_t_1 + II_t_2;
+	//stress tensor magnitude
+	delta_sigma_tensor_magn = sqrt(II_t);
+	/*if (II_t<0.f) {
+	printf("****tau_tensor_magn is negative**** \n");
+	}
+	//Main Stress rate invariants
+	J1_t = I_t; J2_t = I_t*I_t - 2.f*II_t;
+}*/
+
+/// Calculates the I_1(p=-I_1/3), J_2(q=sqrt(3*J_2)) and deviatoric stress tensor (symetric)
+//==============================================================================
+void JSphCpu::GetSigmaInvariant_sym(tsymatrix3f &sigma_tensorp1, float &I_1, float &J_2, tsymatrix3f &sigmaS_tensorp1)const
+{
+	I_1 = sigma_tensorp1.xx + sigma_tensorp1.yy + sigma_tensorp1.zz;
+	const float p = I_1 / 3.f;
+	//deviatoric Stress tensor and invariant
+	sigmaS_tensorp1.xx = sigma_tensorp1.xx - p;  sigmaS_tensorp1.xy = sigma_tensorp1.xy;    sigmaS_tensorp1.xz = sigma_tensorp1.xz;
+	sigmaS_tensorp1.yy = sigma_tensorp1.yy - p;  sigmaS_tensorp1.yz = sigma_tensorp1.yz;
+	sigmaS_tensorp1.zz = sigma_tensorp1.zz - p;
+	//I_t - the first invariant -
+	//I_t = sigmaS_tensorp1.xx + sigmaS_tensorp1.yy + sigmaS_tensorp1.zz;
+	//II_t - the second invariant - expnaded form witout symetry 
+	float II_t_1 = sigmaS_tensorp1.xx*sigmaS_tensorp1.yy + sigmaS_tensorp1.yy*sigmaS_tensorp1.zz + sigmaS_tensorp1.xx*sigmaS_tensorp1.zz;
+	float II_t_2 = sigmaS_tensorp1.xy*sigmaS_tensorp1.xy + sigmaS_tensorp1.yz*sigmaS_tensorp1.yz + sigmaS_tensorp1.xz*sigmaS_tensorp1.xz;
+	//II_t = -II_t_1 + II_t_2;
+	float II_t_3 = (sigmaS_tensorp1.xx*sigmaS_tensorp1.xx + sigmaS_tensorp1.yy*sigmaS_tensorp1.yy + sigmaS_tensorp1.zz*sigmaS_tensorp1.zz)/2.f;
+	J_2 = II_t_3 + II_t_2;       // II_t is equal to J_2, but J_2 is always positive.
+	//stress tensor magnitude
+	/*sigmaS_tensor_magn = sqrt(II_t);
+	if (II_t<0.f) {
+		printf("****sigmaS_tensor_magn is negative**** \n");
+	}
+	//Main Stress rate invariants
+	J1_t = I_t; J2_t = I_t*I_t - 2.f*II_t;*/
+}
+
+//compute yield function
+//==============================================================================
+void JSphCpu::GetYieldDruckerPrager(tsymatrix3f & sigma_tensorp1, const float &alpha_phi, const float &kc, float &yield_value)const
+{
+	tsymatrix3f sigmaS_tensorp1 = { 0,0,0,0,0,0 }; //float sigmaS_tensor_magn = 0.f; //store deviatoric stress
+	//float I_t, II_t = 0.f; float J1_t, J2_t = 0.f;
+	float I_1, J_2 = 0.f;
+	GetSigmaInvariant_sym(sigma_tensorp1, I_1, J_2, sigmaS_tensorp1);
+	yield_value = sqrt(J_2)+ alpha_phi*I_1-kc;
+	/*const float criteria_1 = -alpha_phi*I_1 + kc;
+	const float J2_sqrt = sqrt(J_2);
+	const float factor_2 = criteria_1 / J2_sqrt;
+	if (yield_value > 0.f) { //criteria_1 < J2_sqrt
+		sigma_tensorp1.xx = factor_2*sigmaS_tensorp1.xx + I_1 / 3.f;
+		sigma_tensorp1.yy = factor_2*sigmaS_tensorp1.yy + I_1 / 3.f;
+		sigma_tensorp1.zz = factor_2*sigmaS_tensorp1.zz + I_1 / 3.f;
+		sigma_tensorp1.xy = factor_2*sigmaS_tensorp1.xy;
+		sigma_tensorp1.yz = factor_2*sigmaS_tensorp1.yz;
+		sigma_tensorp1.xz = factor_2*sigmaS_tensorp1.xz;
+		GetSigmaInvariant_sym(sigma_tensorp1, I_1, J_2, sigmaS_tensorp1);
+		yield_value = sqrt(J_2) + alpha_phi*I_1 - kc;
+	}
+	const float factor_1 = -(I_1 - kc / alpha_phi) / 3.f;
+	if (-alpha_phi*I_1 + kc < 0.f) {
+		sigma_tensorp1.xx += factor_1;
+		sigma_tensorp1.yy += factor_1;
+		sigma_tensorp1.zz += factor_1;
+		GetSigmaInvariant_sym(sigma_tensorp1, I_1, J_2, sigmaS_tensorp1);
+		yield_value = sqrt(J_2) + alpha_phi*I_1 - kc;
+	}*/
+	//ModifyStressOfDruckerPrager(I_1, J_2, alpha_phi, kc, sigma_tensorp1,sigmaS_tensorp1,yield_value);
+}
+
+//ajust the stress when it yields.
+void JSphCpu::ModifyStressOfDruckerPrager(float &I_1, float &J_2, const float &alpha_phi, const float &kc, tsymatrix3f &sigma_tensorp1, tsymatrix3f &sigmaS_tensorp1,float yield_value)const
+{
+	const float criteria_1 = -alpha_phi*I_1 + kc;
+	const float factor_1 = -(I_1 - kc / alpha_phi) / 3.f;
+	if (criteria_1 < 0.f) {
+		sigma_tensorp1.xx += factor_1;
+		sigma_tensorp1.yy += factor_1;
+		sigma_tensorp1.zz += factor_1;
+		GetSigmaInvariant_sym(sigma_tensorp1, I_1, J_2, sigmaS_tensorp1);
+		yield_value = sqrt(J_2) + alpha_phi*I_1 - kc;
+	}
+	/*const float J2_sqrt = sqrt(J_2);
+	const float factor_2 = criteria_1 / J2_sqrt;
+	if (criteria_1 < J2_sqrt) {
+		sigma_tensorp1.xx = factor_2*sigmaS_tensorp1.xx + I_1 / 3.f;
+		sigma_tensorp1.yy = factor_2*sigmaS_tensorp1.yy + I_1 / 3.f;
+		sigma_tensorp1.zz = factor_2*sigmaS_tensorp1.zz + I_1 / 3.f;
+		sigma_tensorp1.xy = factor_2*sigmaS_tensorp1.xy;
+		sigma_tensorp1.yz = factor_2*sigmaS_tensorp1.yz;
+		sigma_tensorp1.xz = factor_2*sigmaS_tensorp1.xz;
+		GetSigmaInvariant_sym(sigma_tensorp1, I_1, J_2, sigmaS_tensorp1);
+		yield_value = sqrt(J_2) + alpha_phi*I_1 - kc;
+	}*/
+}
+
 /// Calculates the delta_sigma (symetric)
 //==============================================================================
-void JSphCpu::GetDeltaSigma_sym(const tsymatrix3f &D_tensorp1, float E, float mu, float &div3_D_tensorp1, float &I_t, float &II_t, float &J1_t, float &J2_t, float &delta_sigma_tensor_magn, tsymatrix3f &delta_sigma_tensorp1)const
+void JSphCpu::GetDeltaSigma_sym(const tsymatrix3f &D_tensorp1, float E, float mu, float DP_phi, float DP_cohes, const float &div3_D_tensorp1, float &I_t, float &II_t, float &J1_t, float &J2_t, float &delta_sigma_tensor_magn, tsymatrix3f &delta_sigma_tensorp1,const tsymatrix3f &sigma_tensorp1)const
 {
+	float J_1= sigma_tensorp1.xx*delta_sigma_tensorp1.yy + delta_sigma_tensorp1.yy*delta_sigma_tensorp1.zz + delta_sigma_tensorp1.xx*delta_sigma_tensorp1.zz;
 	const float G=0.5f*E/(1+mu);
 	const float K=1.f/3.f*E/(1 -2.f* mu);
-	const float coef1 = 2.f * G;
-	const float coef2 = K - coef1 / 3.f;
+	const float phi= float(DP_phi*(TORAD));
+	const float tan_phi = tan(phi);
+	const float coef = sqrt(9.f + 12.f * tan_phi*tan_phi);
+	const float coef1 = tan_phi/coef;   //coef1 = 2.f * G;      
+	const float coef2 = 3.f*DP_cohes/coef;//K - coef1 / 3.f;
+	const float lame_0 = 9.f*coef1*coef1*K + G;
+	const float lame_1 = 3.f*coef1*K/lame_0;
+	const float lame_2 = 1.f/ lame_0;
 	//Stress tensor and invariant
 	delta_sigma_tensorp1.xx = coef1*(D_tensorp1.xx)+coef2*div3_D_tensorp1;  delta_sigma_tensorp1.xy = coef1*D_tensorp1.xy;    delta_sigma_tensorp1.xz = coef1*D_tensorp1.xz;
 	delta_sigma_tensorp1.yy = coef1*(D_tensorp1.yy)+coef2*div3_D_tensorp1;  delta_sigma_tensorp1.yz = coef1*D_tensorp1.yz;
